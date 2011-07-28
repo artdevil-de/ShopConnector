@@ -1,0 +1,6 @@
+<?php
+
+define( 'ACTINDO_CONNECTOR_TYPE', 'shopware3.5' );
+define( 'ACTINDO_CONNECTOR_SHOP_DIR', ACTINDO_CONNECTOR_TYPE.'/' );
+
+?>
