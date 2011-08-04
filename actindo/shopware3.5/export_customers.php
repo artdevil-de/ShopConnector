@@ -115,6 +115,8 @@ function export_customers_list( $just_list=TRUE, $filters=array() )
         'currency' => 'EUR',
         'preisgruppe' => $customer['preisgruppe'],
         'gebdat' => $customer['birthday'],
+'verf' => 'VK',
+'zahl_bed' => '1',
         'delivery_addresses' => array(),
       );
 
