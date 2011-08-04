@@ -192,6 +192,9 @@ if (isset($filters['filter'][0])) {
       'paypal' => 'PP',
       'paypalexpress' => 'PP',
       'ipayment' => 'KK',
+      'cashExpress' => 'NN',
+      'FinanzkaufBySantander' => 'FZ',
+      'sofortueberweisung' => 'SU',
     );
     $actindoorder['customer']['verf'] = $verfmap[$actindoorder['_payment_method']];
     if( is_null($actindoorder['customer']['verf']) )
