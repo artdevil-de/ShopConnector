@@ -598,7 +598,9 @@ function _do_set_article_attributes( $combination_advanced, &$options, &$values,
 
   $errors = array();
 
-  $default_standard = 1;
+  // Holger, war 1 ist falsch. Mit 1 entstehen Konfigurator Artikel die 2x standard haben ... 
+  // es kann aber nur einen standard für einen Artikel geben, daher auf 0 geändert.
+  $default_standard = 0;
   foreach( $combination_advanced as $want_art_nr => $comb )
   {
     $vals = array( );
@@ -625,6 +627,12 @@ function _do_set_article_attributes( $combination_advanced, &$options, &$values,
         // if products_is_standard is not set, we set it for
         $standard = $default_standard;
       }
+    }
+
+    // Holger, EAN als "Freitext 1" im Konfigurator
+    if( isset($comb['shop']['art']['products_ean']) ) 
+    {
+      $vals[] = "`gv_attr1`=".act_quote($comb['shop']['art']['products_ean']);
     }
 
     $sql = "REPLACE INTO `s_articles_groups_value` SET `articleID`=".(int)$art_id.", `standard`=".(int)$standard.", `active`=".(int)$active.", `ordernumber`=".act_quote($want_art_nr).", `instock`=".(float)$comb['l_bestand'].(count($vals) > 0 ? ", ".join( ', ', $vals ) : "" );
