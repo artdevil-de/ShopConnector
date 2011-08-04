@@ -351,13 +351,13 @@ function export_orders_positions($order_id)
                            AND `l`.`customergroups` IN (`customergroups`)
                            AND `l`.`valid_from` < `o`.`ordertime` < `l`.`valid_to`");
 			if(is_array($row0)&&isset($row0['preis'])) {
-				$pos['langtext'] .= '<b>Liveshopping Artikel</b><br><i>Regul&auml;rer Preis: '.number_format($row0['preis'], 2, ',', '.').
-						' EUR, Sie sparen '.round((1-$pos['price']/$row0['preis'])*100, 2).'%</i>';
+				$pos['langtext'] .= '<p><b>Liveshopping Artikel</b><br><i>Regul&auml;rer Preis: '.number_format($row0['preis'], 2, ',', '.').
+						' EUR, Sie sparen '.round((1-$pos['price']/$row0['preis'])*100, 2).'%</i></p>';
 			}
 		}
 
 		if($pos['modus']==1) {	// Prämien Artikel
-			$pos['langtext'] .= '<i>'.Shopware()->Snippets()->getSnippet()->get('CartItemInfoPremium').'</i>';
+			$pos['langtext'] .= '<p><i>'.Shopware()->Snippets()->getSnippet()->get('CartItemInfoPremium').'</i></p>';
 		}
 
 		// Special Thanks to HR
@@ -391,7 +391,7 @@ function export_orders_positions($order_id)
 			// Holger, Name ändern. Zwangsweise haben Gutscheine unterschiedliche "Bestellnummern", diese wandert in den Namen des Artikels
 			// und die Bestellnummer wird ein generisches "Gutschein" oder was auch immer vom Shopbetreiber im Backend eingetragen wurde.
 			$pos['name'] = $pos['articleordernumber'];
-			$pos['articleordernumber'] = $export->sSystem->sCONFIG['sVOUCHERNAME'];
+			$pos['articleordernumber'] = '<p>'.$export->sSystem->sCONFIG['sVOUCHERNAME'].'</p>';
 		}
 
 		// Special Thanks to HR
@@ -428,9 +428,10 @@ function export_orders_positions($order_id)
 			// Position hübsch machen
 			$pos['name'] = Shopware()->Snippets()->getSnippet()->get('CartItemInfoBundle');
 			$pos['articleordernumber'] = 'bundle';
+			$pos['langtext'] .= '<p>';
 			if(isset($row0['name']))
 				$pos['langtext'] .= '<i>'.$row0['name'].'</i><br>';
-			$pos['langtext'] .= '<i>Artikel #'.$bundleArticle['number'].', '.$bundleArticle['name'].'</i>';
+			$pos['langtext'] .= '<i>Artikel #'.$bundleArticle['number'].', '.$bundleArticle['name'].'</i></p>';
 		}
 
 		$product = array(
@@ -453,7 +454,7 @@ function export_orders_positions($order_id)
 	if(isset($bundleOrdernumbers)) {
 		foreach ($positions as $key => $val) {
 			if(in_array($val['art_nr'], $bundleOrdernumbers)) {
-				$positions[$key]['langtext'] .= '<b>Bundle Artikel</b><br><i>Sie haben durch unser Bundle Angebot bei diesem Artikel gespart.</i>';
+				$positions[$key]['langtext'] .= '<p><b>Bundle Artikel</b><br><i>Sie haben durch unser Bundle Angebot bei diesem Artikel gespart.</i></p>';
 			}
 		}
 	}
