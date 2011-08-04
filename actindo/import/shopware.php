@@ -2432,7 +2432,9 @@ class sShopwareImport
 			$sql[] = "a.shippingtime=IF(d.kind!=1,a.shippingtime,".$this->sDB->qstr($article_stock['shippingtime']).")";
 		if(isset($article_stock['laststock']))
 			$sql[] = "a.laststock=IF(d.kind!=1,a.laststock,". (empty($article_stock['laststock']) ? 0 : 1) .")";;
-		$sql[] = "a.changetime=".$this->sDB->sysTimeStamp;
+// Holger, potentielle Lösung für "Lager Bug", Ticket #31514 #32174 
+// nachfolgende Zeile einfach auskommentieren
+//		$sql[] = "a.changetime=".$this->sDB->sysTimeStamp;
 		$sql = implode(", ",$sql);
 		$sql = "
 			UPDATE s_articles a, s_articles_details d

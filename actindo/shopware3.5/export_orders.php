@@ -191,7 +191,11 @@ function export_orders_list( $filters=array(), $from=0, $count=0x7FFFFFFF )
 
     $actindoorder['val_date'] = $actindoorder['bill_date'];
 
-    $actindoorder['customer']['print_brutto'] = $order['net'] ? 1 : 0;
+// Holger
+// Zahlendreher in der nachfolgenden Abfrage, "? 0 : 1;" ist korrekt
+// Ansonsten ist in der Bestellung das Feld "USt-Ausweis auf Beleg" falsch
+//    $actindoorder['customer']['print_brutto'] = $order['net'] ? 1 : 0;
+    $actindoorder['customer']['print_brutto'] = $order['net'] ? 0 : 1;
 
 
     $actindoorder['saldo'] = $order['invoice_amount'];
@@ -276,6 +280,15 @@ function export_orders_positions( $order_id )
           }
         }
       }
+      
+      // Holger, das muß hier hin verschoben werden, ansonsten heißt auf einmal der Gutschein (modus 4) genau so wie der Artikel mit der identischen ID
+      // bug #17213: Attributs-Wert wird bereits in $product['attributes'] an actindo übergeben und sind damit im Artilelnamen obsolet
+      $art = act_get_row( "SELECT `name` FROM `s_articles` WHERE `id`=".(int)$pos['articleID'] );
+      if( is_array($art) && isset($art['name']) )
+      {
+        $product['art_name'] = $art['name'];
+      }
+      // Holger ende
     }   // if( $pos['modus'] == 0 || $pos['modus'] == 1 )
 
     $product = array(
@@ -291,13 +304,6 @@ function export_orders_positions( $order_id )
       'langtext' => '',
     );
 
-    // bug #17213: Attributs-Wert wird bereits in $product['attributes'] an actindo übergeben und sind damit im Artilelnamen obsolet
-    $art = act_get_row( "SELECT `name` FROM `s_articles` WHERE `id`=".(int)$pos['articleID'] );
-    if( is_array($art) && isset($art['name']) )
-    {
-      $product['art_name'] = $art['name'];
-    }
-
     // Special Thanks to HR
     // aus irgend einem Grund wird der Steuersatz bei Prämien nicht übergeben, daher holen wir ihn uns hier über die articleID nochmal
     if ($pos['modus'] == 1) {
@@ -310,9 +316,9 @@ function export_orders_positions( $order_id )
     // Anpassung für Gutscheine, der Steuersatz muß aus der Tablle s_core_config ausgelesen werden
     if( $pos['modus'] == 2 )     // Gutschein
     {
-      $row5 = act_get_row("SELECT `value` FROM `s_core_config` WHERE `name` LIKE 'sVOUCHERTAX'");
-      if( is_array($row5) && isset($row5['value']) )
-        $product['mwst'] = $row5['value'];
+      // Der Wert wird auch in der Config Variable gespeichert, sprich wir können uns die SQL Abfrage sparen
+      // Binford: Mehr Power, hrhr
+      $product['mwst'] = (float) $export->sSystem->sCONFIG['sVOUCHERTAX'];
 //      $product['is_brutto'] = 1;
     }
 
@@ -376,13 +382,12 @@ function export_orders_positions( $order_id )
     
   } else {
     // altes Versand Modul
+    // Der Wert wird auch in der Config Variable gespeichert, sprich wir können uns die SQL Abfrage sparen
+    // Binford: Mehr Power, hrhr
+    $versand_mwst = (float) $export->sSystem->sCONFIG['sTAXSHIPPING'];
     $sql = "SELECT `name` FROM `s_shippingcosts_dispatch` WHERE `id`=".$orders1['dispatchID'] ;
     if( is_object($res3 = $export->sDB->Execute($sql)) && is_array($row3=$res3->FetchRow()) )
       $versand_nr = $versand_name = $row3['name'];
-    
-    $sql = "SELECT `value` FROM `s_core_config` WHERE `name` LIKE 'sTAXSHIPPING'";
-    if( is_object($res4 = $export->sDB->Execute($sql)) && is_array($row4=$res4->FetchRow()) )
-      $versand_mwst = $row4['value'];
   }
   
   $positions[] = array(

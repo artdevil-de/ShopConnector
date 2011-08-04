@@ -410,6 +410,8 @@ class sShopwareExport
 		$open_order = array();
 		foreach ($orderIDs as $orderID)
 		{
+			// Holger, übernommen aus der aktuellen Shopware-API
+			$customers[$orderID]["paymentID"] = $orders[$orderID]["paymentID"];
 			$open_orders[$orderID] = array_merge($orders[$orderID],$customers[$orderID]);
 			$open_orders[$orderID]['details'] = $details[$orderID];
 		}
@@ -493,7 +495,8 @@ class sShopwareExport
 		{
 			$sql_where = 'WHERE '.$order['where'];
 		}
-		if ($this->sSystem->sCheckLicense("","",$this->sSystem->sLicenseData["sPREMIUM"])&&!empty($this->sSystem->sCONFIG['sPREMIUMSHIPPIUNG']))
+		// Holger, übernommen aus der aktuellen Shopware-API
+		if (!empty($this->sSystem->sCONFIG['sPREMIUMSHIPPIUNG']))
 		{
 			$dispatch_table = 's_premium_dispatch';
 		}
@@ -702,7 +705,6 @@ class sShopwareExport
 				`ub`.`birthday`,
 				`g`.`id` AS `preisgruppe`,
 				`g`.`tax` AS `billing_net`
-
 			FROM 
 				`s_order_billingaddress` as `b`
 			LEFT JOIN `s_order_shippingaddress` as `s`
@@ -720,6 +722,7 @@ class sShopwareExport
 			WHERE
 				$where
 		";
+		
 		$rows = $this->sDB->GetAll($sql);
 		if(empty($rows)||!is_array($rows)||!count($rows))
 			return false;

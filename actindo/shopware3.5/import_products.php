@@ -17,7 +17,6 @@ function import_product( $product )
 {
   global $api, $mapping, $import, $sprache;
   $pgruppe_translation = get_preisgruppe_translation();   // $pgruppe_translation is now an array like array( 'EK'=>2, 'H'=>3, etc)
-  $attribute_translation = actindo_attribute_translation_table();
   $default_language_id = default_lang();
   $default_language_code = get_language_code_by_id($default_language_id);
   $languages = actindo_get_languages();
@@ -49,8 +48,13 @@ function import_product( $product )
 
   $data = array();
 
-  $data['pricegroupID'] = 1;
-
+  // Holger, Überbleibsel aus Programmier-Tests? Der Befehl macht hier keinen Sinn
+  //$data['pricegroupID'] = 1;
+  $data['pricegroupID'] = isset($product['pricegroupID']) ? $product['pricegroupID'] : '0';
+  // Holger, Die Shopware API reagiert auf gesetzte Filter mit setzen des Feldes "PriceGroupActive", was nicht wünscheswert ist
+  // Vermutlich ist es ein Bug in der Shopware-API, Shopware überprüft es mit Ticket ID #11749 vom 12.05.2011
+  $data['pricegroupActive'] = isset($product['pricegroupActive']) ? $product['pricegroupActive'] : '0';
+  
   // art_nr, art_name, products_id, , products_status, created, last_modified already here.
   $data['ordernumber'] = $product['art_nr'];
   $data['name'] = stripslashes( $product['art_name'] );
@@ -59,14 +63,14 @@ function import_product( $product )
   $data['supplierID'] = $product['shop']['art']['manufacturers_id'];
   $data['laststock'] = $product['shop']['art']['abverkauf'];
   $data['crossbundlelook'] = $product['shop']['art']['bundle'];
-  foreach( $attribute_translation as $shopware_name => $actindo_name )
-  {
-    if( isset($product['shop']['art'][$actindo_name]) )
-      $data[$shopware_name] = $product['shop']['art'][$actindo_name];
-  }
   $data['weight'] = $product['shop']['art']['products_weight'];
   $data['active'] = $product['shop']['art']['products_status'];
-  $data['releasedate'] = $product['shop']['art']['products_date_available'];
+  // Holger, irgendwo auf dem Weg aus actindo nach Shopware wird das Datum noch umformatiert. Das Datenbankfeld ist vom Type 
+  // "date" und das erwartet das Datum in der Formatierung "YYYY-MM-DD" und in dem Format wird es auch von actindo angeliefert.
+  if(!empty($product['shop']['art']['products_date_available'])) {
+    list($year, $month, $day) = split('[/.-]', substr($product['shop']['art']['products_date_available'], 0, 10) );
+    $data['releasedate'] = $year."-".$day."-".$month;
+  }
   $data['shippingtime'] =  max( 0, $product['shop']['art']['shipping_status'] - 1 );   // no map, just ID's
 
 
@@ -77,10 +81,27 @@ function import_product( $product )
     $data['referenceunit'] = isset($product['shop']['art']['products_vpe_referenzeinheit']) ? $product['shop']['art']['products_vpe_referenzeinheit'] : $product['shop']['art']['products_vpe_value'];
     $data['purchasesteps'] = isset($product['shop']['art']['products_vpe_staffelung']) ? $product['shop']['art']['products_vpe_staffelung'] : $product['shop']['art']['products_vpe_value'];
     // TODO: also minpurchase ?
+    // Holger, Antwort: Ja
+    // Erklärung: Nehmen wir einen Artikel den wir in 6er Schritten verkaufen wollen, z.B. ein 6-Pack Bier. Wenn wir "minpurchase" nicht setzen bietet
+    // Shopware folgende Staffelugn an: 1,7,13,19,... Wenn wir "minpurchase" = "purchasesteps" setzen, dann erhalten wir das gewünschte Ergebnis: 6,12,18,24,...
+    $data['minpurchase'] = isset($product['shop']['art']['products_vpe_staffelung']) ? $product['shop']['art']['products_vpe_staffelung'] : $product['shop']['art']['products_vpe_value'];
+    
+    // Holger, Purchase Unit Artikel erhalten hiermit die Einheit im Bestellmengen-Dropdown
+    // to-do: translation fehlt noch
+    $sql = "SELECT `unit`,`description` FROM `s_core_units` WHERE `id` = ".(int)$data['unitID'];
+    if( is_object($result = act_db_query($sql)) )
+    {
+      $row = $result->FetchRow();
+      if ((float)$data['purchaseunit'] == 1)
+        $data['packunit'] = $row['description'];
+      else
+        $data['packunit'] = 'x '.(float)$data['purchaseunit'].' '.$row['description'];
+    }
   }
   else
   {
-    $data['unitID'] = $data['purchaseunit'] = $data['referenceunit'] = 0;
+    $data['unitID'] = $data['purchaseunit'] = $data['referenceunit'] = $data['purchasesteps'] = $data['minpurchase'] = 0;
+    $data['packunit'] = '';
   }
 
   if( isset($product['shop']['art']['products_digital']) )
@@ -97,6 +118,14 @@ function import_product( $product )
     $data['position'] = $product['shop']['art']['products_sort'];
   if( isset($product['shop']['art']['filtergroup_id']) )
     $data['filtergroupID'] = $product['shop']['art']['filtergroup_id'];
+  
+  // Holger, Shopware-Artikel-Feld "eMail-Benachrichtigung, wenn nicht auf Lager:". 
+  // Datenbank Tabelle "s_articles", Feld "notification", Typ "int(1) unsinged" 
+  // Bitte binden Sie es wie "abverkauf" oder "bundle" als "Ja/Nein" Select-Box ein.
+  // Als Standard Vorbelegung bitte "Ja" auswählen. Die Shopware-API unterstützt die Variable.
+  // Vielen Dank
+  if (empty($product['shop']['art']['notification'])) $product['shop']['art']['notification'] = 1;  // solange actindo es nicht unterstützt, immer aktivieren
+  $data['notification'] = $product['shop']['art']['notification'];
 
 
   // check manufacturer
@@ -429,6 +458,17 @@ function _do_import_properties( $data, $product, $languages, $default_language_c
         }
       }
     }
+  }
+
+// Holger, Sonderbehandlung für die Attributsfelder "EAN" und "FSK18". In actindo gibt es eigene Felder dafür
+// und wir wollen das sie die generischen Attribute (actindo Vokabel "Zusatzfelder") immer überschreiben.
+// Daher wurde der Code aus function import_product() gelöscht und hierher umgezogen.
+// Erklärung: In Zeile 385 wird der Befehlt "DELETE `s_articles_attributes`" ausgeführt und alle vorher gesetzen Attribute werden damit gelöscht 
+  $attribute_translation = actindo_attribute_translation_table();
+  foreach( $attribute_translation as $shopware_name => $actindo_name )
+  {
+    if( isset($product['shop']['art'][$actindo_name]) )
+      $sql[] = "`{$shopware_name}`=".act_quote($product['shop']['art'][$actindo_name]);
   }
 
   if( count($sql) )

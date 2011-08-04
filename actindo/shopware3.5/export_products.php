@@ -115,7 +115,10 @@ function __do_export_products( $categories_id=0, $products_model='', $products_i
       a.purchaseunit AS products_vpe_value,
       a.referenceunit AS products_vpe_referenzeinheit,
       a.purchasesteps AS products_vpe_staffelung,
+      d.weight AS weight,
+      IF(a.unitID=0,'Stück',cu.unit) AS einheit,
     ";
+// Holger, auf Artikelbasisdaten Reiter Felder Artikeleinheit: & Artikelgewicht: setzen
 
     if( is_shopware3() )
     {
@@ -128,7 +131,9 @@ function __do_export_products( $categories_id=0, $products_model='', $products_i
         a.filtergroupID AS filtergroup_id,
         a.laststock AS abverkauf,
         a.crossbundlelook AS bundle,
+        a.notification AS notification,
       ";
+// Holger, das "Bitte eMail-Benachrichtigung einbinden" Feld soll natürlich auch exportiert werden
     }
   }
   $sql .= "
@@ -137,6 +142,7 @@ function __do_export_products( $categories_id=0, $products_model='', $products_i
       (s_articles a,
       s_articles_details d)
     LEFT JOIN s_articles_categories AS pc ON (pc.articleID=a.id)
+    LEFT JOIN s_core_units AS cu ON (cu.id=a.unitID)
     WHERE
       d.ordernumber NOT LIKE 'BLOG%' AND
       d.articleID = a.id AND d.kind=1 AND ({$q}) AND ({$qry['q_search']}) GROUP BY a.`id` ORDER BY {$qry['order']} LIMIT {$qry['limit']}";
@@ -506,6 +512,9 @@ function _do_export_descriptions( &$p )
 function _do_export_preisgruppen( &$p, $articleprices, $pgruppe_translation )
 {
   // ACHTUNG: $price['net'] > 0 ist BRUTTO!!!!!
+  // Holger, Fehler: Die Variable heißt $price['netto'] !!! nicht ['net']
+  // Dadurch wurde auch in der Funktion export_price() fehlerhaft gearbeitet. Dort wurde der Fehler ebenfalls behoben
+  // Die ganzen (float)s bei der Übergabe an die Funktion export_price() wurden entfernt, sie haben die Kommastelle abgeschnitten
 
   $p['preisgruppen'] = $p['products_pseudoprices'] = array();
 
@@ -515,9 +524,9 @@ function _do_export_preisgruppen( &$p, $articleprices, $pgruppe_translation )
   {
     if( $_price['pricegroup'] == 'EK' && $_price['from'] == 1 )
     {
-      $p['is_brutto'] = ((int)$_price['net']) ? 0 : 1;
+      $p['is_brutto'] = ((int)$_price['netto']) ? 0 : 1;
       $p['mwst'] = (float)$_price['tax'];
-      $p['grundpreis'] = export_price( (float)$_price['price'], $_price['net'], $_price['tax'] );
+      $p['grundpreis'] = export_price( $_price['price'], $_price['netto'], $_price['tax'] );
     }
 
     $pg_id = $pgruppe_translation[$_price['pricegroup']];
@@ -526,30 +535,75 @@ function _do_export_preisgruppen( &$p, $articleprices, $pgruppe_translation )
     $prices_by_group[$pg_id][] = $_price;
   }
 
+/* 
+// Holger, aus irgend einem Grund funktioniert die Schleife nicht, wenn es mehr als einen Preis pro Preigruppe gibt
+// Konkret, die  if( $price['from'] == 1 )  Abfrage ist fehlerhaft.
+// Nachfolgend meine Version die funktioniert
   foreach( $prices_by_group as $pg_id => $prices )
   {
     usort( $prices, '_prices_sorter' );
 
-    $p['preisgruppen'][$pg_id] = array(
-      'is_brutto' => ((int)$prices[0]['net']) ? 0 : 1,
-    );
-
     $i = 0;
     foreach( $prices as $price )
     {
+        // Der Befehl gehört hierhin um das Brutto/Netto der Preisgruppe abgereifen zu können und nicht 
+        // wie vorher immer den Wert der Grundpreis Gruppe zu übergeben.
+        $p['preisgruppen'][$pg_id] = array(
+            'is_brutto' => ((int)$price['netto']) ? 0 : 1,
+        );
+
       if( $price['from'] == 1 )
       {
-        $p['preisgruppen'][$pg_id]['grundpreis'] = export_price( (float)$price['price'], $price['net'], $price['tax'] );
-        $p['products_pseudoprices'][$pg_id] = export_price( (float)$price['pseudoprice'], $price['net'], $price['tax'] );
+        $p['preisgruppen'][$pg_id]['grundpreis'] = export_price( $price['price'], $price['netto'], $price['tax'] );
+        $p['products_pseudoprices'][$pg_id] = export_price( $price['pseudoprice'], $price['netto'], $price['tax'] );
       }
       else
       {
         $i++;
-        $p['preisgruppen'][$pg_id]['preis_gruppe'.$i] = (float)export_price( (float)$price['price'], $price['net'], $price['tax'] );
-        $p['preisgruppen'][$pg_id]['preis_range'.$i] = (float)$price['from'];
+        $p['preisgruppen'][$pg_id]['preis_gruppe'.$i] = export_price( $price['price'], $price['netto'], $price['tax'] );
+        $p['preisgruppen'][$pg_id]['preis_range'.$i] = $price['from'];
       }
     }
   }
+*/
+
+  foreach( $prices_by_group as $pg_id => $prices )
+  {
+    usort( $prices, '_prices_sorter' );
+
+    $i = 0;
+    foreach( $prices as $price )
+    {
+      // Der Befehl gehört hierhin um das Brutto/Netto der Preisgruppe abgereifen zu können und nicht 
+      // wie vorher immer den Wert der Grundpreis Gruppe zu übergeben.
+      $p['preisgruppen'][$pg_id] = array(
+        'is_brutto' => ((int)$price['netto']) ? 0 : 1,
+      );
+
+      if( $price['from'] == 1 )
+      {
+        $p1[$pg_id]['grundpreis'] = export_price( $price['price'], $price['netto'], $price['tax'] );
+        $p['products_pseudoprices'][$pg_id] = export_price( $price['pseudoprice'], $price['netto'], $price['tax'] );
+      }
+      else
+      {
+        $i++;
+        $p2[$pg_id]['preis_gruppe'.$i] = export_price( $price['price'], $price['netto'], $price['tax'] );
+        $p2[$pg_id]['preis_range'.$i] = $price['from'];
+      }
+    }
+  }
+
+  foreach ($p1 as $key => $value) {
+    foreach ($value as $datakey => $datavalue) {
+      $p['preisgruppen'][$key][$datakey] = $datavalue;
+    }
+    foreach ($p2[$key] as $datakey => $datavalue) {
+      $p['preisgruppen'][$key][$datakey] = $datavalue;
+    }
+  }
+
+// Holger, Ende
 
   return array( 'ok' => TRUE );
 }
