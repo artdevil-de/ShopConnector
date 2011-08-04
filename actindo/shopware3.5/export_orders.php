@@ -210,8 +210,10 @@ if (isset($filters['filter'][0])) {
     }
     else if( $actindoorder['customer']['verf'] == 'PP' )
     {
-      if( act_have_table('paypal_orders') )
-      {
+// Holger, ansonsten kommt es in Shopware 3.5.4 zu fehlern beim Import
+// damit könnte die komplette Funktion act_have_table aus util.php entfernt werden
+#      if( act_have_table('paypal_orders') )
+#      {
         $actindoorder['payment']['pp'] = array();
         $res1 = $export->sDB->Execute( "SELECT * FROM `paypal_orders` WHERE `stransId`='".esc($order['transactionID'])."'" );
         $row = $res1->FetchRow();
@@ -219,7 +221,7 @@ if (isset($filters['filter'][0])) {
         $actindoorder['payment']['pp']['trx_no'] = $row['transactionId'];
         $actindoorder['payment']['pp']['type'] = $row['authorization'] ? 'authorization' : 'payment';
         $actindoorder['payment']['pp']['payer_id'] = $row['payerId'];
-      }
+#      }
     }
 
 //    $actindoorder['customer']['langcode'] = strtolower( $order['langcode'] );
@@ -254,7 +256,6 @@ if (isset($filters['filter'][0])) {
 
     $orders[] = $actindoorder;
   }
-
 
   return array( 'ok'=>TRUE, 'orders'=>$orders );
 }
