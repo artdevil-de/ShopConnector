@@ -296,13 +296,9 @@ class sClassHandler
 				$this->sClass[$class] = new $class;
 			else 
 				return false;
-			#if(isset($this->sClass[$class]->sSystem))
 				$this->sClass[$class]->sSystem =& $this->sAPI->sSystem;
-			#if(isset($this->sClass[$class]->sDB))
 				$this->sClass[$class]->sDB =& $this->sAPI->sDB;
-			#if(isset($this->sClass[$class]->sPath))
 				$this->sClass[$class]->sPath =& $this->sAPI->sPath;
-			#if(isset($this->sClass[$class]->sAPI))
 				$this->sClass[$class]->sAPI =& $this->sAPI;
 		}
 		return $this->sClass[$class];

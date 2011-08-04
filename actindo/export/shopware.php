@@ -383,6 +383,11 @@ class sShopwareExport
         }
         return $categories;
 	}
+
+	/**
+	 * Exportiert alle hinterlegten Hersteller
+	 * @return
+	 */
 	function sSuppliers ()
 	{
 		$sql = "
@@ -410,7 +415,6 @@ class sShopwareExport
 		$open_order = array();
 		foreach ($orderIDs as $orderID)
 		{
-			// Holger, übernommen aus der aktuellen Shopware-API
 			$customers[$orderID]["paymentID"] = $orders[$orderID]["paymentID"];
 			$open_orders[$orderID] = array_merge($orders[$orderID],$customers[$orderID]);
 			$open_orders[$orderID]['details'] = $details[$orderID];
@@ -495,7 +499,6 @@ class sShopwareExport
 		{
 			$sql_where = 'WHERE '.$order['where'];
 		}
-		// Holger, übernommen aus der aktuellen Shopware-API
 		if (!empty($this->sSystem->sCONFIG['sPREMIUMSHIPPIUNG']))
 		{
 			$dispatch_table = 's_premium_dispatch';
@@ -617,7 +620,8 @@ class sShopwareExport
 			WHERE
 				({$order['where']})
 			ORDER BY `orderdetailsID` ASC
-		";
+		"; // Fix #5830 backported from github
+		
 		$rows = $this->sDB->GetAll($sql);
 		if(empty($rows)||!is_array($rows))
 			return false;
@@ -705,7 +709,7 @@ class sShopwareExport
 				`ub`.`birthday`,
 				`g`.`id` AS `preisgruppe`,
 				`g`.`tax` AS `billing_net`
-			FROM 
+			FROM
 				`s_order_billingaddress` as `b`
 			LEFT JOIN `s_order_shippingaddress` as `s`
 			ON `s`.`orderID` = `b`.`orderID`
@@ -721,7 +725,7 @@ class sShopwareExport
 			ON `u`.`customergroup` = `g`.`groupkey`
 			WHERE
 				$where
-		";
+		";  // Fix #5830 backported from github
 		
 		$rows = $this->sDB->GetAll($sql);
 		if(empty($rows)||!is_array($rows)||!count($rows))
@@ -898,7 +902,12 @@ class sShopwareExport
 		}
 		return round($money_str,2);
 	}
-	
+
+	/**
+	 * Exportiert Kunden - falls keine ID definiert ist ($user) - alle!
+	 * @param int $user
+	 * @return
+	 */
 	function sCustomers ($user=0)
 	{
 		if(!empty($user)&&is_int($user))
