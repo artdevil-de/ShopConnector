@@ -273,17 +273,43 @@ function export_orders_positions( $order_id )
   if( !is_array($orders1) )
     return array( 'ok' => FALSE );
 
-  // HR
-  // Anpassung für "Versand" und "Zuschlag für Zahlungsart", den maximalen Steuersatz der Bestellung herausfinden
-  $versand_mwst = 0;
-  $row0 = act_get_row("SELECT max(`t`.`tax`) as taxmax FROM `s_order_details` as `d` LEFT JOIN `s_core_tax` as `t` ON `t`.`id` = `d`.`taxID` WHERE `d`.`orderID`=".$orders1['orderID']);
-  if( is_array($row0) && isset($row0['taxmax']) )
-    $versand_mwst = $row0['taxmax'];
-
   $positions1 = $export->sOrderDetails( array("orderID"=> $order_id) );
   if( !is_array($positions1) )
     return array( 'ok' => FALSE );
 
+  // Special Thanks to HR
+  // Versandvorbereitung vor die Artikelschleife der Bestellung gezogen. Hintergrund: "Zuschlag zur Zahlungsart" ist steuerrechtlich eine 
+  // "Versandnebenleistung" und teilt daher steuerrechtlich das Schicksal des Versand. Shopware behandelt "Zuschlag zur Zahlungsart" allerdings
+  // wie einen regulären Artikel (modus = 4) und daher können wir uns die Steuerberechnung für "Zuschlag zur Zahlungsart" sparen, wenn wir
+  // vor den Artikeln bereits den Steuersatz für den Versand berechnen. Binford: Mehr Power, hrhr
+  $versand_nr   = 'VERSAND';
+  $versand_name = 'Versandkosten';
+  $versand_mwst = 0;
+
+  // Die Werte werden auch in der Config Variable und der $order1 Varibale gespeichert, sprich wir können uns die SQL Abfragen sparen. 
+  // Binford: Mehr Power, hrhr
+  // P.S. ist Rechtschreibung nicht was schönes ? Shopware, wird wohl auf immer mit dem "ShippiUng" für das Premium Modul leben müssen :)
+  if( $export->sSystem->sCONFIG['sPREMIUMSHIPPIUNG'] == 1 )
+  {
+    // Premium Versand Modul
+    $versand_nr = $versand_name = $orders1['dispatch_description'];
+    $row0 = act_get_row("SELECT `pd`.`tax_calculation`, `t`.`tax` FROM `s_premium_dispatch` as `pd` LEFT JOIN `s_core_tax` as `t` ON `t`.`id` = `pd`.`tax_calculation` WHERE `pd`.`id`=".$orders1['dispatchID'] );
+    if( is_array($row0) && isset($row0['tax']) )
+      $versand_mwst = $row0['tax'];
+  } else {
+    // altes Versand Modul
+    $versand_nr = $versand_name = $orders1['dispatch_description'];
+    $versand_mwst = $export->sSystem->sCONFIG['sTAXSHIPPING'];
+  }
+
+  // Holger, Kontrolle von unserem Versand Steuersatz. 
+  // Wenn er vom Höchsten im Warenkorb abweicht ist was falsch gelaufen und wir übernehmen den Höchsten aus dem Warenkorb
+  unset($row0);
+  $row0 = act_get_row("SELECT max(`t`.`tax`) as taxmax FROM `s_order_details` as `d` LEFT JOIN `s_core_tax` as `t` ON `t`.`id` = `d`.`taxID` WHERE `d`.`orderID`=".$orders1['orderID']);
+  if( (is_array($row0) && isset($row0['taxmax'])) && ($row0['taxmax'] <> $versand_mwst) )
+    $versand_mwst = $row0['taxmax'];
+
+  // Schleife über die Bestellpositionen
   $positions = array();
   foreach( $positions1 as $pos )
   {
@@ -317,64 +343,28 @@ function export_orders_positions( $order_id )
           }
         }
       }
-      
+
       // Holger, das muß hier hin verschoben werden, ansonsten heißt auf einmal der Gutschein (modus 4) genau so wie der Artikel mit der identischen ID
       // bug #17213: Attributs-Wert wird bereits in $product['attributes'] an actindo übergeben und sind damit im Artilelnamen obsolet
-      $art = act_get_row( "SELECT `name` FROM `s_articles` WHERE `id`=".(int)$pos['articleID'] );
-      if( is_array($art) && isset($art['name']) )
+      unset($row0);
+      $row0 = act_get_row( "SELECT `name` FROM `s_articles` WHERE `id`=".(int)$pos['articleID'] );
+      if( is_array($row0) && isset($row0['name']) )
       {
-        $product['art_name'] = $art['name'];
+        $pos['name'] = $row0['name'];
       }
       // Holger ende
     }   // if( $pos['modus'] == 0 || $pos['modus'] == 1 )
 
-    $product = array(
-      'art_nr' => $pos['articleordernumber'],
-      'art_nr_base' => $pos['articleordernumber'],
-      'art_name' => htmlspecialchars_decode($pos['name']),
-      'preis' => (float)$pos['price'],
-      'is_brutto' => $orders1['net'] ? 0 : 1,
-      'type' => ($pos['modus'] == 0 || $pos['modus'] == 1) ? 'Lief' : 'NLeist',
-      'mwst' => (float)$pos['tax'],
-      'menge' => (float)$pos['quantity'],
-      'attributes' => $attributes,
-      'langtext' => '',
-    );
+    // Holger, dann wollen wir mal in meinem Durcheinander ein wenig aufräumen 
+    //         und gleichzeitig den Artikel Langtext nutzen ...
+    $pos['langtext'] = '';
 
     // Special Thanks to HR
-    // aus irgend einem Grund wird der Steuersatz bei Prämien nicht übergeben, daher holen wir ihn uns hier über die articleID nochmal
-    if ($pos['modus'] == 1) {
-      $row6 = act_get_row("SELECT `t`.`tax` FROM `s_articles` as `a` LEFT JOIN `s_core_tax` as `t` ON `t`.`id` = `a`.`taxID` WHERE `a`.`id` = ".$pos['articleID'] );
-      if( is_array($row6) && isset($row6['tax']) )
-        $product['mwst'] = $row6['tax'];
-    }
-
-    // Special Thanks to HR
-    // Anpassung für Gutscheine, der Steuersatz muß aus der Tablle s_core_config ausgelesen werden
-    if( $pos['modus'] == 2 )     // Gutschein
+    if ( $pos['modus'] == 0 )    // regulärer Artikel
     {
-      // Der Wert wird auch in der Config Variable gespeichert, sprich wir können uns die SQL Abfrage sparen
-      // Binford: Mehr Power, hrhr
-      $product['mwst'] = (float) $export->sSystem->sCONFIG['sVOUCHERTAX'];
-//      $product['is_brutto'] = 1;
-    }
-
-    // Special Thanks to HR
-    // Anpassung für "Zuschlag für Zahlungsart", der Steuersatz muß noch gesetzt werden
-    if( $pos['modus'] == 4 )     // Zuschlag Zahlungsart
-    {
-      $row = act_get_row("SELECT `pd`.`tax_calculation`, `t`.`tax` FROM `s_premium_dispatch` as `pd` LEFT JOIN `s_core_tax` as `t` ON `t`.`id` = `pd`.`tax_calculation` WHERE `pd`.`id`=".$orders1['dispatchID'] );
-      if( is_array($row) && isset($row['tax']) )
-        $product['mwst'] = $row['tax'];
-      else
-        $product['mwst'] = $versand_mwst;
-    }
-
-    // Special Thanks to HR
-    // Liveshopping markierern
-    if ( $pos['modus'] == 0 )
-    {
-      $rowL = act_get_row("SELECT `a`.`price` as `preis`
+      // Liveshopping Artikel markieren
+      unset($row0);
+      $row0 = act_get_row("SELECT `a`.`price` as `preis`
                            FROM `s_order` as `o`
                            INNER JOIN `s_order_details` as `d`
                            ON  (`o`.`id` = `d`.`orderID`)
@@ -391,42 +381,132 @@ function export_orders_positions( $order_id )
                            AND `d`.`price` < `a`.`price`
                            AND `l`.`customergroups` IN (`customergroups`)
                            AND `l`.`valid_from` < `o`.`ordertime` < `l`.`valid_to`");
-      if( is_array($rowL) && isset($rowL['preis']) ) 
+      if( is_array($row0) && isset($row0['preis']) ) 
       {
-        $product['langtext'] = '<b>Liveshopping Artikel</b><br><i>Regul&auml;rer Preis: '.number_format($rowL['preis'], 2, ',', '.').
-                               ' EUR, Sie sparen '.round( (1 - $pos['price'] / $rowL['preis']) * 100 , 2 ).'%</i>';
+        $pos['langtext'] .= '<b>Liveshopping Artikel</b><br><i>Regul&auml;rer Preis: '.number_format($row0['preis'], 2, ',', '.').
+                            ' EUR, Sie sparen '.round( (1 - $pos['price'] / $row0['preis']) * 100 , 2 ).'%</i>';
       }
     }
- 
+
+    if( $pos['modus'] == 1 )    // Prämien Artikel
+    {
+      $pos['langtext'] .= '<i>'.Shopware()->Snippets()->getSnippet()->get('CartItemInfoPremium').'</i>';
+    }
+
+    // Special Thanks to HR
+    // Anpassung für Gutscheine, in der API wird kein Steuersatz übergeben
+    if( $pos['modus'] == 2 )     // Gutschein
+    {
+      unset($row0);
+      $row0 = act_get_row("SELECT taxconfig FROM s_emarketing_vouchers WHERE ordercode=".$pos['articleordernumber'] );
+      if( is_array($row0) && isset($row0['taxconfig']) ) 
+      {
+        // 3.5.4 und später, Gutscheine sind einstellbar.
+        $resultVoucherTaxMode = $row0['taxconfig'];
+        if (empty($resultVoucherTaxMode) || $resultVoucherTaxMode == "default")
+        {
+          $pos['tax'] = $export->sSystem->sCONFIG['sVOUCHERTAX'];
+        }
+        elseif ($resultVoucherTaxMode == "auto")
+        {
+          $pos['tax'] = $versand_mwst;
+        }
+        elseif ($resultVoucherTaxMode=="none")
+        {
+          $pos['tax'] = 0;
+        }
+        elseif (intval($resultVoucherTaxMode))
+        {
+          // Steuersatz ist im Feld angegeben und muß ausgelesen werden
+          $rowT = act_get_row("SELECT tax FROM s_core_tax WHERE id = ".$resultVoucherTaxMode );
+          if( is_array($rowT) && isset($rowT['tax']) ) 
+          {
+            $pos['tax'] = $rowT['tax'];
+          } else {
+            $pos['tax'] = $versand_mwst;
+          }
+        }
+
+      } else {
+        // 3.5.3 und früher, fixer Satz in der Konfiguration
+        $pos['tax'] = $export->sSystem->sCONFIG['sVOUCHERTAX'];
+      }
+
+      // Holger, Name ändern. Zwangsweise haben Gutscheine unterschiedliche "Bestellnummern", diese wandert in den Namen des Artikels
+      // und die Bestellnummer wird ein generisches "Gutschein" oder was auch immer vom Shopbetreiber im Backend eingetragen wurde.
+      $pos['name'] = $pos['articleordernumber'];
+      $pos['articleordernumber'] = $export->sSystem->sCONFIG['sVOUCHERNAME'];
+    }
+
+    // Special Thanks to HR
+    // In der Shopware Logik hat der "Zuschlag für Zahlungsart" keinen Steuersatz, dann setzen wir den mal ...
+    if( $pos['modus'] == 4 )     // Zuschlag Zahlungsart
+    {
+      $pos['tax'] = $versand_mwst;
+    }
+
+    // Artikel Bundle Rabatt Position. Das hier ist die "-10 EUR" Position, irgendwo im Warenkorb verstecken sich die Bundle Artikel.
+    // Position hübsch formatieren und die Bundle Artikel ausfindig machen, der Langtext folgt im zweiten Schritt.
+    if( $pos['modus'] == 10 )     // Bundle Rabatt
+    {
+      // ID des Bundleartikels auslesen
+      unset($row0);
+      unset($bundleOrdernumbers);
+      $row0 = act_get_row("SELECT id, articleID, name FROM `s_articles_bundles` WHERE `ordernumber` = ".act_quote($pos['articleordernumber']) );
+      if( is_array($row0) && isset($row0['id']) )
+      {
+        // ordernumber & name des bundle artikels herausbekommen
+        $rowB = act_get_row("SELECT `ad`.`ordernumber`, `a`.`name` FROM `s_articles_details` AS `ad` 
+                             LEFT JOIN `s_articles` AS `a` ON ( `ad`.`articleID` = `a`.`id` )
+                             WHERE `ad`.`articleID` =".$row0['articleID'] );
+        if( is_array($rowB) && isset($rowB['ordernumber']) ) {
+          $bundleOrdernumbers[] = $rowB['ordernumber'];
+          $bundleArticle['name'] = $rowB['name'];
+          $bundleArticle['number'] = $rowB['ordernumber'];
+        }
+
+        // zugeordnete Bundleartikel ermitteln
+        unset($rowB);
+        $rowB = $export->sDB->Execute("SELECT ordernumber FROM `s_articles_bundles_articles` WHERE `bundleID` = ".$row0['id'] );
+        while( $row = $rowB->FetchRow() )
+          $bundleOrdernumbers[] = $row['ordernumber'];
+      }
+
+      // Position hübsch machen
+      $pos['name'] = Shopware()->Snippets()->getSnippet()->get('CartItemInfoBundle');
+      $pos['articleordernumber'] = 'bundle';
+      if (isset($row0['name'])) $pos['langtext'] .= '<i>'.$row0['name'].'</i><br>';
+      $pos['langtext'] .= '<i>Artikel #'.$bundleArticle['number'].', '.$bundleArticle['name'].'</i>';
+    }
+
+    $product = array(
+      'art_nr' => $pos['articleordernumber'],
+      'art_nr_base' => $pos['articleordernumber'],
+      'art_name' => htmlspecialchars_decode($pos['name']),
+      'preis' => (float)$pos['price'],
+      'is_brutto' => $orders1['net'] ? 0 : 1,
+      'type' => ($pos['modus'] == 0 || $pos['modus'] == 1) ? 'Lief' : 'NLeist',
+      'mwst' => (float)$pos['tax'],
+      'menge' => (float)$pos['quantity'],
+      'attributes' => $attributes,
+      'langtext' => $pos['langtext'],
+    );
+
     $positions[] = $product;
   }
-
-  // Special Thanks to HR
-  $versand_nr   = 'VERSAND';
-  $versand_name = 'Versandkosten';
   
-  $row = act_get_row("SELECT `value` FROM `s_core_config` WHERE `name` LIKE 'sPREMIUMSHIPPIUNG'");
-  if( ( is_array($row) && isset($row['value']) ) && $row['value'] == 1 )
+  // Bundle Teil 2, die versteckten Bundle Artikel in der Bestellung ausfindig machen und einen Langtext verpassen.
+  if(isset($bundleOrdernumbers))
   {
-    // Premium Versand Modul
-    $sql = "SELECT `name` FROM `s_premium_dispatch` WHERE `id`=".$orders1['dispatchID'] ;
-    if( is_object($res3 = $export->sDB->Execute($sql)) && is_array($row3=$res3->FetchRow()) )
-      $versand_nr = $versand_name = $row3['name'];
-    
-    $row = act_get_row("SELECT `pd`.`tax_calculation`, `t`.`tax` FROM `s_premium_dispatch` as `pd` LEFT JOIN `s_core_tax` as `t` ON `t`.`id` = `pd`.`tax_calculation` WHERE `pd`.`id`=".$orders1['dispatchID'] );
-    if( is_array($row) && isset($row['tax']) )
-      $versand_mwst = $row['tax'];
-    
-  } else {
-    // altes Versand Modul
-    // Der Wert wird auch in der Config Variable gespeichert, sprich wir können uns die SQL Abfrage sparen
-    // Binford: Mehr Power, hrhr
-    $versand_mwst = (float) $export->sSystem->sCONFIG['sTAXSHIPPING'];
-    $sql = "SELECT `name` FROM `s_shippingcosts_dispatch` WHERE `id`=".$orders1['dispatchID'] ;
-    if( is_object($res3 = $export->sDB->Execute($sql)) && is_array($row3=$res3->FetchRow()) )
-      $versand_nr = $versand_name = $row3['name'];
+    foreach($positions as $key=>$val)
+    {
+      if( in_array($val['art_nr'], $bundleOrdernumbers) )
+      {
+        $positions[$key]['langtext'] .= '<b>Bundle Artikel</b><br><i>Sie haben durch unser Bundle Angebot bei diesem Artikel gespart.</i>';
+      }
+    }
   }
-  
+
   $positions[] = array(
     'art_nr' => $versand_nr,
     'art_nr_base' => $versand_nr,
@@ -438,7 +518,6 @@ function export_orders_positions( $order_id )
     'menge' => 1,
     'langtext' => '',
   );
-
 
   return $positions;
 }
