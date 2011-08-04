@@ -400,14 +400,55 @@ function orders_list_positions( $params )
 
 
 /**
+ * Holger, Smarty Modifier werden benötigt damit die E-Mail korrekt aufbereitet wird.
+ * Shopware nutzt in den Bestell-Status-E-Mails die proprietären Tags "fill" und "padding"
+ * Mit diesen Funktionen werden sie umgesetzt.
+ */
+function smarty_modifier_fill ($str, $width=10, $break="...", $fill=" ")
+{
+	if(!is_scalar($break))
+		$break = "...";
+	if(empty($fill)||!is_scalar($fill))
+		$fill = " ";
+	if(empty($width)||!is_numeric($width))
+		$width = 10;
+	else 
+		$width = (int)$width;
+	if(!is_scalar($str))
+		return str_repeat($fill,$width);
+	if(strlen($str)>$width)
+		$str = substr($str,0,$width-strlen($break)).$break;
+	if($width>strlen($str))
+		return $str.str_repeat($fill,$width-strlen($str));
+	else 
+		return $str;
+}
+
+function smarty_modifier_padding ($str, $width=10, $break="...", $fill=" ")
+{
+	if(!is_scalar($break))
+		$break = "...";
+	if(empty($fill)||!is_scalar($fill))
+		$fill = " ";
+	if(empty($width)||!is_numeric($width))
+		$width = 10;
+	else 
+		$width = (int)$width;
+	if(!is_scalar($str))
+		return str_repeat($fill,$width);
+	if(strlen($str)>$width)
+		$str = substr($str,0,$width-strlen($break)).$break;
+	if($width>strlen($str))
+		return str_repeat($fill,$width-strlen($str)).$str;
+	else 
+		return $str;
+}
+
+/**
  * @done
  */
 function orders_set_status( $params )
 {
-  $old_wd = getcwd();
-
-  chdir( SHOPWARE_BASEPATH.'/engine/core/ajax' );
-
   if( !parse_args($params,$ret) )
     return $ret;
 
@@ -425,39 +466,57 @@ function orders_set_status( $params )
   ));
 
   if( !$res )
-    return resp( array('ok'=>FALSE, 'errno'=>EIO, 'error'=>'Fehler beim senden der Status-Mail') );
+    return resp( array('ok'=>FALSE, 'errno'=>EIO, 'error'=>'Fehler beim Speichern des Bestellstatus') );
 
   if( $send_customer )
   {
-    return resp( array('ok'=>FALSE, 'errno'=>EIO, 'error'=>'Senden der Status-Mail wird im Shopware 3.5 Connector nicht unterstützt') );
-/*
-    require_once( "../../core/php/sMailTemplate.php" );
-    require_once( "../../vendor/phpmailer/class.phpmailer.php" );
-
-   	$mail = new sMail();
-   	$mail->sInitSmarty();
-   	$mail_vars = $mail->sGetMail("sORDERSTATEMAIL{$status}", $orderID);
-
-  	if(!empty($mail_vars['content']))
-  	{
-    	$phpmail = new PHPMailer;
-  		$phpmail->IsHTML(0);
-  		$phpmail->From     = $mail_vars['frommail'];
-  		$phpmail->FromName = $mail_vars['fromname'];
-  		$phpmail->Subject  = $mail_vars['subject'];
-  		$phpmail->Body     = $mail_vars['content'];
-  		$phpmail->ClearAddresses();
-  		$phpmail->AddAddress(trim($mail->sUser['email']), "");
-  		if (!$phpmail->Send()){
-            chdir( $old_wd );
-  			return resp( array('ok'=>FALSE, 'errno'=>EIO, 'error'=>'Fehler beim senden der Status-Mail') );
-  		}
-  	}
-*/
+	// Holger, von wegen wir können keine E-Mails versenden ;)
+	// Achtung, die api.php muß geändert werden, damit das Shopware() Objekt zur Verfügung steht
+	
+	$mailname = "sORDERSTATEMAIL".$status;
+	$template = clone Shopware()->Config()->Templates[$mailname];
+	
+	$templateEngine = Shopware()->Template();
+	$templateEngine->register_modifier("fill", "smarty_modifier_fill");
+	$templateEngine->register_modifier("padding", "smarty_modifier_padding");
+	$templateData = $templateEngine->createData();
+	$templateData->assign('sConfig', Shopware()->Config());
+	
+	$sOrder = $export->sGetOrders(array("orderID"=>$orderID));
+	$sOrder = current($sOrder);
+	$sOrderDetails = $export->sOrderDetails(array("orderID"=>$orderID));
+	$sOrderDetails = array_values($sOrderDetails);
+	$sUser = current($export->sOrderCustomers(array("orderID"=>$orderID)) );
+	
+	$templateData->assign("sOrder", $sOrder);
+	$templateData->assign("sOrderDetails", $sOrderDetails);
+	$templateData->assign("sUser", $sUser);
+	
+	$mail_vars = array(
+		"content" => utf8_encode($templateEngine->fetch('string:'.$template->content, $templateData)), 
+		"subject" => utf8_encode(trim($templateEngine->fetch('string:'.$template->subject, $templateData))),
+		"email" => utf8_encode(trim($sUser['email'])),
+		"frommail" => utf8_encode(trim($templateEngine->fetch('string:'.$template->frommail, $templateData))),
+		"fromname" => utf8_encode(trim($templateEngine->fetch('string:'.$template->fromname, $templateData)))
+	);
+	
+	if(!empty($mail_vars['content']))
+	{
+		$mail = clone Shopware()->Mail();
+		$mail->IsHTML(0);
+		$mail->From     = utf8_decode($mail_vars['frommail']);
+		$mail->FromName = utf8_decode($mail_vars['frommail']);
+		$mail->Subject  = utf8_decode($mail_vars['subject']);
+		$mail->Body     = utf8_decode($mail_vars['content']);
+		
+		$mail->ClearAddresses();
+		$mail->AddAddress($mail_vars['email'], '');
+		
+		if (!$mail->Send()){
+			return resp( array('ok'=>FALSE, 'errno'=>EIO, 'error'=>'Fehler beim senden der Status-Mail') );
+		}
+	}
   }
-
-//  chdir( SHOPWARE_BASEPATH.'/engine/connectors/api/actindo/shopware3' );
-  chdir( $old_wd );
 
   return resp( array('ok'=>TRUE) );
 }
@@ -568,7 +627,7 @@ function shop_get_connector_version( &$arr, $params )
 {
   global $export;
 
-  $revision = '$Revision: 386 $';
+  $revision = '$Revision: 386-HR-fix5 $';
   $arr = array(
     'revision' => $revision,
     'protocol_version' => '2.'.substr( $revision, 11, -2 ),
