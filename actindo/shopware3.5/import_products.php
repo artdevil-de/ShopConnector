@@ -53,6 +53,7 @@ function import_product( $product )
   $data['pricegroupID'] = isset($product['pricegroupID']) ? $product['pricegroupID'] : '0';
   // Holger, Die Shopware API reagiert auf gesetzte Filter mit setzen des Feldes "PriceGroupActive", was nicht wünscheswert ist
   // Vermutlich ist es ein Bug in der Shopware-API, Shopware überprüft es mit Ticket ID #11749 vom 12.05.2011
+  // - Mit aktualisierter Import API vom 27.07.2011 ist der Fehler von Shopware behoben (version 3.5.4.1)
   $data['pricegroupActive'] = isset($product['pricegroupActive']) ? $product['pricegroupActive'] : '0';
   
   // art_nr, art_name, products_id, , products_status, created, last_modified already here.
