@@ -46,9 +46,42 @@ function export_orders_list( $filters=array(), $from=0, $count=0x7FFFFFFF )
   if( $qry === FALSE )
     return array( 'ok'=>false, 'errno'=>EINVAL, 'error'=>'Error in filter definition' );
 
+/* Holger
+Dann lösen wir mal wieder für actindo deren Bugs ... 
+Diese Woche "not enough memory" beim Bestellungsimport erstellen ...
+
+Solange die vom Kunden in actindo ausgewählten Filterstatus bei der Anfrage nicht mit übergeben werden, 
+bleibt nicht viel anderes übrig als hardcodiert ein paar weitere Bestellung Status auszuschließen.
+- status 2 => "Komplett abgeschlossen"
+- status 7 => "Komplett ausgeliefert"
+- status 4 => "Storniert / Abgelehnt"
+
+Für eine richtige Lösung sollte immer noch der Wert aus "Faktuara > Einstellungen > Webshop > Shop > Bestllimport" 
+in dieser Anfrage an den Shop übermittelt werden. 
+Angebot, wenn Sie Ihre API entsprechend erweitern, programmiere ich den Teil für den Shop.
+*/
+
+if (isset($filters['filter'][0])) {
+  //alle
+  $hr_extend_sql = '';
+} else {
+  // nur 50
+  $hr_extend_sql = ' AND o.status NOT IN (2,4,7)';
+}
+
+// original Abfrage
+//  $orders1 = $export->sGetOrders(
+//    array( 'where' => $qry['q_search'].' AND o.status>=0', 'limit' => $qry['limit'], 'order'=>$qry['order']/*'`orderID` DESC'*/ )
+//  );
+
+// und hier meine
+
   $orders1 = $export->sGetOrders(
-    array( 'where' => $qry['q_search'].' AND o.status>=0', 'limit' => $qry['limit'], 'order'=>$qry['order']/*'`orderID` DESC'*/ )
+    array( 'where' => $qry['q_search'].' AND o.status>=0'.$hr_extend_sql, 'limit' => $qry['limit'], 'order'=>$qry['order']/*'`orderID` DESC'*/ )
   );
+
+// Holger Ende  
+
   if( !is_array($orders1) )
     return array( 'ok' => FALSE );
 
