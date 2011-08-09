@@ -9,6 +9,9 @@
  * @author  Patrick Prasse <pprasse@actindo.de>
  * @version $Revision: 384 $
  * @copyright Copyright (c) 2008, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, pprasse@actindo.de)
+ * @author  Holger Ronecker
+ * @link    http://artdevil.de/ShopConnector ShopConnector Seite aus ArtDevil.de
+ * @copyright Copyright (c) 2011, Holger Ronecker, devil@artdevil.de
  */
 
 /**
@@ -368,21 +371,6 @@ function actindo_get_translation($objecttype, $objectkey)
  */
 function export_price($price_netto, $net, $tax_percent)
 {
-	/*
-	  // VORSICHT $net > 0 ist BRUTTO, nicht netto
-	  if( !(int)$net )
-	  return round( $price_netto, 2 );
-	  else
-	  return round( $price_netto * (1+($tax_percent/100)), 2 );
-	 */
-	/*
-	  // Holger, hier waren zwei Fehler
-	  1) Durch die übergabe des Preises mit (float) wurde die Kommastelle abgeschnitte & der round Befehlt hier
-	  hat ebenfalls die Kommastelle abgeschnitten. Daher das (float) bei der Übergabe entfernt & hier das Komma ersetzt
-	  2) Die Preisberechnung war falsch. Durch einen Fehler in Funktion _do_export_preisgruppen() wurde $net immer als Brutto übergeben.
-	  Dadurch das wir in der Funktion _do_export_preisgruppen() den Bruttto/Netto Fehler behoben haben, brauchen wir hier keine
-	  korrigierenden Funktion mehr.
-	 */
 	return round(str_replace(',', '.', $price_netto), 2);
 }
 

@@ -21,6 +21,8 @@ require_once(dirname(dirname(dirname(dirname(__FILE__)))).DIRECTORY_SEPARATOR.'S
  * @package     Shopware 3.5.0
  * @subpackage  API
  * @version		1.0.0
+ * @author      Holger Ronecker
+ * @link        http://artdevil.de/ShopConnector ShopConnector Seite aus ArtDevil.de
  */
 class sAPI extends Shopware
 {
@@ -83,8 +85,8 @@ class sAPI extends Shopware
 		$this->sPath = $this->DocPath();
 		$this->sCONFIG = $this->Config();
 		$db = new Enlight_Components_Adodb(array(
-					'db' => $this->Db()
-				));
+			'db' => $this->Db()
+		));
 		$this->sDB = $db;
 		$this->sSystem = $this;
 

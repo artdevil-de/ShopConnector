@@ -11,6 +11,9 @@
  * @version $Revision: 376 $
  * @copyright Copyright (c) 2007, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, pprasse@actindo.de)
  * @license http://opensource.org/licenses/gpl-license.php GNU Public License
+ * @author  Holger Ronecker
+ * @link    http://artdevil.de/ShopConnector ShopConnector Seite aus ArtDevil.de
+ * @copyright Copyright (c) 2011, Holger Ronecker, devil@artdevil.de
  */
 define('ACTINDO_TRANSPORT_CHARSET', 'ISO8859-1');
 

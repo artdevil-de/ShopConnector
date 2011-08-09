@@ -10,6 +10,9 @@
  * @version $Revision: 293 $
  * @copyright Copyright (c) 2007, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, pprasse@actindo.de)
  * @license http://opensource.org/licenses/gpl-license.php GNU Public License
+ * @author  Holger Ronecker
+ * @link    http://artdevil.de/ShopConnector ShopConnector Seite aus ArtDevil.de
+ * @copyright Copyright (c) 2011, Holger Ronecker, devil@artdevil.de
  */
 define('SHOP_TYPE_XTCOMMERCE', 'xtcommerce');
 define('SHOP_TYPE_GAMBIOGX', 'gambiogx');

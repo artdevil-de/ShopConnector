@@ -10,6 +10,9 @@
  * @version $Revision: 386 $
  * @copyright Copyright (c) 2008, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, haimerl@actindo.de)
  * @license http://opensource.org/licenses/gpl-license.php GNU Public License
+ * @author  Holger Ronecker
+ * @link    http://artdevil.de/ShopConnector ShopConnector Seite aus ArtDevil.de
+ * @copyright Copyright (c) 2011, Holger Ronecker, devil@artdevil.de
  */
 function import_product($product)
 {
@@ -43,8 +46,6 @@ function import_product($product)
 
 	$data = array();
 
-	// Holger, Überbleibsel aus Programmier-Tests? Der Befehl macht hier keinen Sinn
-	//$data['pricegroupID'] = 1;
 	$data['pricegroupID'] = isset($product['pricegroupID']) ? $product['pricegroupID'] : '0';
 	// Holger, Die Shopware API reagiert auf gesetzte Filter mit setzen des Feldes "PriceGroupActive", was nicht wünscheswert ist
 	// Vermutlich ist es ein Bug in der Shopware-API, Shopware überprüft es mit Ticket ID #11749 vom 12.05.2011

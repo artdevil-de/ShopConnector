@@ -10,6 +10,9 @@
  * @version $Revision: 384 $
  * @copyright Copyright (c) 2007, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, pprasse@actindo.de)
  * @license http://opensource.org/licenses/gpl-license.php GNU Public License
+ * @author  Holger Ronecker
+ * @link    http://artdevil.de/ShopConnector ShopConnector Seite aus ArtDevil.de
+ * @copyright Copyright (c) 2011, Holger Ronecker, devil@artdevil.de
  */
 function export_orders_count()
 {
@@ -44,39 +47,26 @@ function export_orders_list($filters=array(), $from=0, $count=0x7FFFFFFF)
 		return array('ok' => false, 'errno' => EINVAL, 'error' => 'Error in filter definition');
 
 	/* Holger
-	  Dann lösen wir mal wieder für actindo deren Bugs ...
-	  Diese Woche "not enough memory" beim Bestellungsimport erstellen ...
+	  Fix für "not enough memory" Bug beim Bestellungsimport erstellen ...
 
 	  Solange die vom Kunden in actindo ausgewählten Filterstatus bei der Anfrage nicht mit übergeben werden,
 	  bleibt nicht viel anderes übrig als hardcodiert ein paar weitere Bestellung Status auszuschließen.
 	  - status 2 => "Komplett abgeschlossen"
 	  - status 7 => "Komplett ausgeliefert"
 	  - status 4 => "Storniert / Abgelehnt"
-
-	  Für eine richtige Lösung sollte immer noch der Wert aus "Faktuara > Einstellungen > Webshop > Shop > Bestllimport"
-	  in dieser Anfrage an den Shop übermittelt werden.
-	  Angebot, wenn Sie Ihre API entsprechend erweitern, programmiere ich den Teil für den Shop.
 	 */
 
 	if(isset($filters['filter'][0])) {
-		//alle
+		// "alle" Filter beim "Bestellungsimport"
 		$hr_extend_sql = '';
 	} else {
-		// nur 50
+		// "die letzten 50" Filter beim "Bestellungsimport"
 		$hr_extend_sql = ' AND o.status NOT IN (2,4,7)';
 	}
-
-// original Abfrage
-//  $orders1 = $export->sGetOrders(
-//    array( 'where' => $qry['q_search'].' AND o.status>=0', 'limit' => $qry['limit'], 'order'=>$qry['order']/*'`orderID` DESC'*/ )
-//  );
-// und hier meine
 
 	$orders1 = $export->sGetOrders(
 			array('where' => $qry['q_search'].' AND o.status>=0'.$hr_extend_sql, 'limit' => $qry['limit'], 'order' => $qry['order']/* '`orderID` DESC' */)
 	);
-
-// Holger Ende  
 
 	if(!is_array($orders1))
 		return array('ok' => FALSE);
@@ -213,10 +203,6 @@ function export_orders_list($filters=array(), $from=0, $count=0x7FFFFFFF)
 
 		$actindoorder['val_date'] = $actindoorder['bill_date'];
 
-// Holger
-// Zahlendreher in der nachfolgenden Abfrage, "? 0 : 1;" ist korrekt
-// Ansonsten ist in der Bestellung das Feld "USt-Ausweis auf Beleg" falsch
-//    $actindoorder['customer']['print_brutto'] = $order['net'] ? 1 : 0;
 		$actindoorder['customer']['print_brutto'] = $order['net'] ? 0 : 1;
 
 
@@ -258,17 +244,10 @@ function export_orders_positions($order_id)
 		return array('ok' => FALSE);
 
 	// Special Thanks to HR
-	// Versandvorbereitung vor die Artikelschleife der Bestellung gezogen. Hintergrund: "Zuschlag zur Zahlungsart" ist steuerrechtlich eine 
-	// "Versandnebenleistung" und teilt daher steuerrechtlich das Schicksal des Versand. Shopware behandelt "Zuschlag zur Zahlungsart" allerdings
-	// wie einen regulären Artikel (modus = 4) und daher können wir uns die Steuerberechnung für "Zuschlag zur Zahlungsart" sparen, wenn wir
-	// vor den Artikeln bereits den Steuersatz für den Versand berechnen. Binford: Mehr Power, hrhr
 	$versand_nr = 'VERSAND';
 	$versand_name = 'Versandkosten';
 	$versand_mwst = 0;
 
-	// Die Werte werden auch in der Config Variable und der $order1 Varibale gespeichert, sprich wir können uns die SQL Abfragen sparen. 
-	// Binford: Mehr Power, hrhr
-	// P.S. ist Rechtschreibung nicht was schönes ? Shopware, wird wohl auf immer mit dem "ShippiUng" für das Premium Modul leben müssen :)
 	if($export->sSystem->sCONFIG['sPREMIUMSHIPPIUNG']==1) {
 		// Premium Versand Modul
 		$versand_nr = $versand_name = $orders1['dispatch_description'];
@@ -323,7 +302,6 @@ function export_orders_positions($order_id)
 			if(is_array($row0)&&isset($row0['name'])) {
 				$pos['name'] = $row0['name'];
 			}
-			// Holger ende
 		}   // if( $pos['modus'] == 0 || $pos['modus'] == 1 )
 		// Holger, dann wollen wir mal in meinem Durcheinander ein wenig aufräumen 
 		//         und gleichzeitig den Artikel Langtext nutzen ...

@@ -11,6 +11,9 @@ error_reporting(E_ALL);
  * @version $Revision: 386 $
  * @copyright Copyright (c) 2007, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, pprasse@actindo.de)
  * @license http://opensource.org/licenses/gpl-license.php GNU Public License
+ * @author  Holger Ronecker
+ * @link    http://artdevil.de/ShopConnector ShopConnector Seite aus ArtDevil.de
+ * @copyright Copyright (c) 2011, Holger Ronecker, devil@artdevil.de
  */
 if(ACTINDO_CONNECTOR_TYPE=='shopware3.5'||ACTINDO_CONNECTOR_TYPE=='shopware3.04'||ACTINDO_CONNECTOR_TYPE=='shopware3.03')	 // do not use is_shopware3 here...
 	require_once('api.php');
@@ -439,7 +442,6 @@ function orders_set_status($params)
 
 	if($send_customer) {
 		// Holger, von wegen wir können keine E-Mails versenden ;)
-		// Achtung, die api.php muß geändert werden, damit das Shopware() Objekt zur Verfügung steht
 
 		$mailname = "sORDERSTATEMAIL".$status;
 		$template = clone Shopware()->Config()->Templates[$mailname];
