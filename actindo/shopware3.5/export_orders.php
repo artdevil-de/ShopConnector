@@ -247,6 +247,7 @@ function export_orders_positions($order_id)
 	$versand_nr = 'VERSAND';
 	$versand_name = 'Versandkosten';
 	$versand_mwst = 0;
+	$versand_langtext = '';
 
 	if($export->sSystem->sCONFIG['sPREMIUMSHIPPIUNG']==1) {
 		// Premium Versand Modul
@@ -446,7 +447,7 @@ function export_orders_positions($order_id)
 		'type' => 'NLeist',
 		'mwst' => $versand_mwst,
 		'menge' => 1,
-		'langtext' => '',
+		'langtext' => $versand_langtext
 	);
 
 	return $positions;
