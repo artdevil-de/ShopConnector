@@ -12,7 +12,7 @@ error_reporting(E_ALL);
  * @copyright Copyright (c) 2007, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, pprasse@actindo.de)
  * @license http://opensource.org/licenses/gpl-license.php GNU Public License
  * @author  Holger Ronecker
- * @link    http://artdevil.de/ShopConnector ShopConnector Seite aus ArtDevil.de
+ * @link    http://artdevil.de/ShopConnector ShopConnector Seite auf ArtDevil.de
  * @copyright Copyright (c) 2011, Holger Ronecker, devil@artdevil.de
  */
 if(ACTINDO_CONNECTOR_TYPE=='shopware3.5'||ACTINDO_CONNECTOR_TYPE=='shopware3.04'||ACTINDO_CONNECTOR_TYPE=='shopware3.03')	 // do not use is_shopware3 here...

@@ -10,7 +10,7 @@
  * @version $Revision: 384 $
  * @copyright Copyright (c) 2008, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, pprasse@actindo.de)
  * @author  Holger Ronecker
- * @link    http://artdevil.de/ShopConnector ShopConnector Seite aus ArtDevil.de
+ * @link    http://artdevil.de/ShopConnector ShopConnector Seite auf ArtDevil.de
  * @copyright Copyright (c) 2011, Holger Ronecker, devil@artdevil.de
  */
 
