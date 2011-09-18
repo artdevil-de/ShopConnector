@@ -492,6 +492,10 @@ function _do_import_attributes($data, $product, $pgruppe_translation, $default_l
 		$res = _do_set_article_attributes($product['shop']['attributes']['combination_advanced'], $product['shop']['attributes']['names'], $product['shop']['attributes']['values'], $id, $product, $pgruppe_translation, $data, $default_language_id, $default_language_code);
 		if(!$res['ok'])
 			return $res;
+
+		$res = _do_set_article_attributes_settings($id, $product);
+		if(!$res['ok'])
+			return $res;
 	}
 	else if(isset($product['shop']['attributes'])) {
 		$sql = "DELETE FROM `s_articles_groups_value` WHERE `articleID`=".(int)$id;
@@ -502,9 +506,35 @@ function _do_import_attributes($data, $product, $pgruppe_translation, $default_l
 		$res &= act_db_query($sql);
 		$sql = "DELETE FROM `s_articles_groups_option` WHERE `articleID`=".(int)$id;
 		$res &= act_db_query($sql);
+		$sql = "DELETE FROM `s_articles_groups_settings` WHERE `articleID`=".(int)$art_id;
+		$res &= act_db_query($sql);
 		if(!$res)
 			return array('ok' => FALSE, 'errno' => EIO, 'error' => 'Fehler beim löschen der Konfigurator-Artikel');
 	}
+
+	return array('ok' => TRUE);
+}
+
+function _do_set_article_attributes_settings($art_id, $product)
+{
+	// Holger, dann wollen wir mal die volle Macht des Shopware Konfigurators nutzen.
+	// Es gibt nämlich noch eine "settings" Tabelle, die bisher vollständig ignoriert wurde.
+	global $import;
+	$res = $pres = TRUE;
+
+	$sql = "DELETE FROM `s_articles_groups_settings` WHERE `articleID`=".(int)$art_id;
+	$result0 = act_db_query($sql);
+
+	$sql = "REPLACE INTO `s_articles_groups_settings` (`articleID`, `defaultorder`, `grouporder`, `optionorder`, `type`, `instock`, `template`, `upprice`) VALUES
+		('".(int)$art_id."', 'standard DESC', 'groupposition', 'optionposition', '0', '".(int)$product['shop']['art']['abverkauf']."', '', '0')";
+
+	$res &= act_db_query($sql);
+	if(!$res) {
+		$errors[] = act_db_error();
+	}
+
+	if(!$res)
+		return array('ok' => FALSE, 'errno' => EIO, 'error' => 'Fehler beim anlegen der Konfigurator-Gruppen Einstellungen: '.join("\n", $errors));
 
 	return array('ok' => TRUE);
 }
@@ -555,8 +585,12 @@ function _do_set_article_attributes($combination_advanced, &$options, &$values, 
 		}
 
 		// Holger, EAN als "Freitext 1" im Konfigurator
-		if(isset($comb['shop']['art']['products_ean'])) {
-			$vals[] = "`gv_attr1`=".act_quote($comb['shop']['art']['products_ean']);
+		if(isset($comb['shop']['art']['products_ean']) && ((int)act_quote($comb['shop']['art']['products_ean']) <> 0) ) {
+			$vals[] = "`gv_attr1`=".(int)act_quote($comb['shop']['art']['products_ean']);
+		}
+		// Holger, shippingtime als "Freitext 2" im Konfigurator
+		if(isset($comb['data']["shipping_status"]) ) {
+			$vals[] = "`gv_attr2`=".(int)act_quote($comb['data']["shipping_status"] - 1);
 		}
 
 		$sql = "REPLACE INTO `s_articles_groups_value` SET `articleID`=".(int)$art_id.", `standard`=".(int)$standard.", `active`=".(int)$active.", `ordernumber`=".act_quote($want_art_nr).", `instock`=".(float)$comb['l_bestand'].(count($vals)>0 ? ", ".join(', ', $vals) : "" );
@@ -586,9 +620,9 @@ function _do_set_article_attributes($combination_advanced, &$options, &$values, 
 
 			// no mengenstaffel support in Konfigurator
 			$sql = "REPLACE INTO `s_articles_groups_prices` SET `articleID`=".(int)$art_id.",
-        `valueID`=".(int)$comb['valueID'].",
-        `groupkey`=".act_quote($pricegroup).",
-        `price`=".(float)import_price($pgruppe['grundpreis'], $pgruppe['is_brutto'], get_tax_rate($data['taxID']));
+				`valueID`=".(int)$comb['valueID'].",
+				`groupkey`=".act_quote($pricegroup).",
+				`price`=".(float)import_price($pgruppe['grundpreis'], $pgruppe['is_brutto'], get_tax_rate($data['taxID']));
 			$pres &= act_db_query($sql);
 			if(!$pres) {
 				$errors[] = act_db_error();
@@ -644,13 +678,15 @@ function _do_import_attributes_options(&$options, &$values, $art_id, $default_la
 	act_db_query($sql);
 
 	$res = TRUE;
+	$groupposition_i=0;
 	// LOCK here.
 	foreach ($options as $id => $_arr) {
 		if(!$just_get) {
 			// 1.3 create necessary groups
 			if(!$_arr['_shop_id']) {	  // always the case at this time...
 				$next_id = _get_next_groups_id($art_id);
-				$sql = "INSERT INTO `s_articles_groups` SET `groupID`=".(int)$next_id.", `articleID`=".(int)$art_id.", `groupname`=".act_quote($_arr[$default_language_code]);
+				$groupposition_i++;
+				$sql = "INSERT INTO `s_articles_groups` SET `groupID`=".(int)$next_id.", `articleID`=".(int)$art_id.", `groupname`=".act_quote($_arr[$default_language_code]).", `groupposition`=".(int)$groupposition_i;
 				act_db_query($sql);
 				$options[$id]['_shop_id'] = $_arr['_shop_id'] = $next_id;
 			}
@@ -703,6 +739,18 @@ function _do_import_attributes_options(&$options, &$values, $art_id, $default_la
 				}
 			}
 		}
+
+		// Holger, jetzt haben wir uns in actindo so viel Mühe gegeben die Attribute schön zu sortieren, und was ist? 
+		// Sie werden noch nicht mal nach Shopware exportiert. Eine Schande. Naja, dieser Code behebt den Mangel
+		if(!$just_get) {
+			$optionposition_i=0;
+			foreach ($values[$id] as $_id => $_arr1) {
+				$optionposition_i++;
+				$sql = "UPDATE `s_articles_groups_option` SET `optionposition`=".(int)$optionposition_i." WHERE `optionID`=".(int)$_arr1['_shop_id'];
+				act_db_query($sql);
+			}
+		}
+
 	}
 	// UNLOCK here.
 
@@ -942,10 +990,15 @@ function _import_product_stock($product)
 			$sql = array('`instock`='.(int)$_val["l_bestand"]);
 			if(isset($_val['data']["products_status"]))
 				$sql[] = '`active`='.(int)$_val['data']["products_status"];
-			/* TODO: NOT YET SUPPORTED BY Shopware
-			  if( isset($_val['data']["shipping_status"]) )
-			  $sql[] = '`shippingtime`='.(int)$_val['data']["shipping_status"] - 1;
-			 */
+			/* TODO: NOT YET SUPPORTED BY Shopware */
+			// Holger, na dann nutzen wir einfach eines der Freitextfelder dafür, genau für so etwas sind die gedacht
+			// Freitextfeld1 habe ich schon mit den EAN Codes belegt, daher shippingtime in Feld 2
+			// Der Shopwarekunde mußt unter "Einstellungen > Storefront > Warenkorb / Artikeldetails" das Feld 
+			//   "Konfigurator Freitextfelder:" auf "EAN, Lieferzeit" ändern, damit das Shopware backend alles richtig anzeigt.
+			// In der Template müssen dann auch noch leichte Anpassungen vorgenommen werden, für versierte Shopbetreiber allerdings kein Problem
+			if( isset($_val['data']["shipping_status"]) )
+			$sql[] = '`gv_attr2`='.(int)$_val['data']["shipping_status"] - 1;
+
 			$sql = "UPDATE `s_articles_groups_value` SET ".join(', ', $sql)." WHERE `ordernumber`=".act_quote($_art_nr)." AND `articleID`=".(int)$articleid;
 			$res &= act_db_query($sql);
 		}
