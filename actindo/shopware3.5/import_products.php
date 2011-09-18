@@ -590,7 +590,7 @@ function _do_set_article_attributes($combination_advanced, &$options, &$values, 
 		}
 		// Holger, shippingtime als "Freitext 2" im Konfigurator
 		if(isset($comb['data']["shipping_status"]) ) {
-			$vals[] = "`gv_attr2`=".(int)act_quote($comb['data']["shipping_status"] - 1);
+			$vals[] = "`gv_attr2`=".max(0, (int)$comb['data']["shipping_status"]-1);
 		}
 
 		$sql = "REPLACE INTO `s_articles_groups_value` SET `articleID`=".(int)$art_id.", `standard`=".(int)$standard.", `active`=".(int)$active.", `ordernumber`=".act_quote($want_art_nr).", `instock`=".(float)$comb['l_bestand'].(count($vals)>0 ? ", ".join(', ', $vals) : "" );
@@ -997,7 +997,7 @@ function _import_product_stock($product)
 			//   "Konfigurator Freitextfelder:" auf "EAN, Lieferzeit" ändern, damit das Shopware backend alles richtig anzeigt.
 			// In der Template müssen dann auch noch leichte Anpassungen vorgenommen werden, für versierte Shopbetreiber allerdings kein Problem
 			if( isset($_val['data']["shipping_status"]) )
-			$sql[] = '`gv_attr2`='.(int)$_val['data']["shipping_status"] - 1;
+			$sql[] = '`gv_attr2`='.max(0, (int)$_val['data']["shipping_status"]-1);
 
 			$sql = "UPDATE `s_articles_groups_value` SET ".join(', ', $sql)." WHERE `ordernumber`=".act_quote($_art_nr)." AND `articleID`=".(int)$articleid;
 			$res &= act_db_query($sql);
