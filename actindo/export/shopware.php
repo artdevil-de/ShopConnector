@@ -415,7 +415,6 @@ class sShopwareExport
 		$open_order = array();
 		foreach ($orderIDs as $orderID)
 		{
-			// Holger, übernommen aus der aktuellen Shopware-API
 			$customers[$orderID]["paymentID"] = $orders[$orderID]["paymentID"];
 			$open_orders[$orderID] = array_merge($orders[$orderID],$customers[$orderID]);
 			$open_orders[$orderID]['details'] = $details[$orderID];
@@ -500,7 +499,6 @@ class sShopwareExport
 		{
 			$sql_where = 'WHERE '.$order['where'];
 		}
-		// Holger, übernommen aus der aktuellen Shopware-API
 		if (!empty($this->sSystem->sCONFIG['sPREMIUMSHIPPIUNG']))
 		{
 			$dispatch_table = 's_premium_dispatch';
@@ -563,8 +561,8 @@ class sShopwareExport
 			ON	(`o`.`currency` = `cu`.`currency`)
 			$sql_where
 		";
-    if( !empty($order['limit']) )   // actindo bug #30764
-      $sql .= ' LIMIT '.$order['limit'];
+		if( !empty($order['limit']) )   // actindo bug #30764
+			$sql .= ' LIMIT '.$order['limit'];
 
 		$rows = $this->sDB->GetAssoc($sql);
 		if(empty($rows)||!is_array($rows)||!count($rows))

@@ -1,3 +1,5 @@
 <?php
-  header( 'Location: /' );
+
+header('Location: /');
+
 ?>
