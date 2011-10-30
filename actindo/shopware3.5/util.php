@@ -310,10 +310,12 @@ function get_tax_rate($tax_id)
 function check_admin_pass($pass, $login=null)
 {
 	global $export;
+	global $connectorlogin;
 	!is_null($login)or$login = 'actindo';
-	$sql = "SELECT IF(`password`=".$export->sDB->Quote($pass).", 1, 0) AS okay FROM `s_core_auth` WHERE `username`=".$export->sDB->Quote($login);
+	$sql = "SELECT IF(`password`=".$export->sDB->Quote($pass).", 1, 0) AS okay, name FROM `s_core_auth` WHERE `username`=".$export->sDB->Quote($login);
 	if(is_object($result = $export->sDB->Execute($sql))) {
 		$row = $result->FetchRow();
+		$connectorlogin = $row['name'];
 		if($row['okay']>0)
 			return TRUE;
 	}

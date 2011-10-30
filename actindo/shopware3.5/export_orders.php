@@ -26,6 +26,7 @@ function export_orders_count()
 function export_orders_list($filters=array(), $from=0, $count=0x7FFFFFFF)
 {
 	global $export;
+	global $connectorlogin;
 
 	isset($filters['start'])or$filters['start'] = (int)$from;
 	isset($filters['limit'])or$filters['limit'] = (int)$count;
@@ -129,6 +130,11 @@ function export_orders_list($filters=array(), $from=0, $count=0x7FFFFFFF)
 			'orders_status' => $order['statusID'],
 		);
 
+		// Holger, Bearbeiter setzen
+		if(isset($connectorlogin)) {
+			$actindoorder['signum'] = $connectorlogin;
+		}
+
 		preg_match('/^(\d{4}-\d{2}-\d{2})(\s+(\d+:\d+:\d+))?$/', $order['ordertime'], $matches);
 		$actindoorder['webshop_order_date'] = $matches[1];
 		$actindoorder['webshop_order_time'] = $matches[3];
@@ -195,8 +201,9 @@ function export_orders_list($filters=array(), $from=0, $count=0x7FFFFFFF)
 		$positions1 = $export->sOrderDetails(array("orderID" => $order['orderID']));
 		if(is_array($positions1)) {
 			foreach ($positions1 as $pos) {
-				if($pos['modus']==3)	// DISCOUNT
-					$actindoorder['rabatt_betrag'] -= (float)$pos['price'];   // rabatt is positive, price is negative
+				if($pos['modus']==3) {	// DISCOUNT
+					$actindoorder['rabatt_betrag'] -= (float)$pos['price'] / round ($actindoorder['saldo'] / $actindoorder['netto'], 2);   // rabatt is positive, price is negative
+				}
 			}
 		}
 
@@ -285,7 +292,7 @@ function export_orders_positions($order_id)
 		}   // if( $pos['modus'] == 0 || $pos['modus'] == 1 )
 		// Holger, dann wollen wir mal in meinem Durcheinander ein wenig aufräumen
 		//         und gleichzeitig den Artikel Langtext nutzen ...
-		$pos['langtext'] = '';
+		$pos['langtext'] = "";
 
 		// Special Thanks to HR
 		if($pos['modus']==0) { // regulärer Artikel
@@ -309,13 +316,13 @@ function export_orders_positions($order_id)
                            AND `l`.`customergroups` IN (`customergroups`)
                            AND `l`.`valid_from` < `o`.`ordertime` < `l`.`valid_to`");
 			if(is_array($row0)&&isset($row0['preis'])) {
-				$pos['langtext'] .= '<p><b>Liveshopping Artikel</b><br>\n<i>Regul&auml;rer Preis: '.number_format($row0['preis'], 2, ',', '.').
-						' EUR, Sie sparen '.round((1-$pos['price']/$row0['preis'])*100, 2).'%</i></p>';
+				$pos['langtext'] .= "<p><b>Liveshopping Artikel</b><br>\n<i>Regul&auml;rer Preis: ".number_format($row0['preis'], 2, ',', '.').
+						" EUR, Sie sparen ".round((1-$pos['price']/$row0['preis'])*100, 2)."%</i></p>";
 			}
 		}
 
 		if($pos['modus']==1) { // Prämien Artikel
-			$pos['langtext'] .= '<p><i>'.Shopware()->Snippets()->getSnippet()->get('CartItemInfoPremium').'</i></p>';
+			$pos['langtext'] .= "<p><i>".Shopware()->Snippets()->getSnippet()->get('CartItemInfoPremium')."</i></p>";
 		}
 
 		// Special Thanks to HR
@@ -386,10 +393,10 @@ function export_orders_positions($order_id)
 			// Position hübsch machen
 			$pos['name'] = Shopware()->Snippets()->getSnippet()->get('CartItemInfoBundle');
 			$pos['articleordernumber'] = 'bundle';
-			$pos['langtext'] .= '<p>';
+			$pos['langtext'] .= "<p>";
 			if(isset($row0['name']))
-				$pos['langtext'] .= '<i>'.$row0['name'].'</i><br>\n';
-			$pos['langtext'] .= '<i>Artikel #'.$bundleArticle['number'].', '.$bundleArticle['name'].'</i></p>';
+				$pos['langtext'] .= "<i>".$row0['name']."</i><br>\n";
+			$pos['langtext'] .= "<i>Artikel #".$bundleArticle['number'].", ".$bundleArticle['name']."</i></p>";
 		}
 
 		$product = array(
@@ -412,7 +419,7 @@ function export_orders_positions($order_id)
 	if(isset($bundleOrdernumbers)) {
 		foreach ($positions as $key => $val) {
 			if(in_array($val['art_nr'], $bundleOrdernumbers)) {
-				$positions[$key]['langtext'] .= '<p><b>Bundle Artikel</b><br>\n<i>Sie haben durch unser Bundle Angebot bei diesem Artikel gespart.</i></p>';
+				$positions[$key]['langtext'] .= "<p><b>Bundle Artikel</b><br>\n<i>Sie haben durch unser Bundle Angebot bei diesem Artikel gespart.</i></p>";
 			}
 		}
 	}
@@ -428,7 +435,6 @@ function export_orders_positions($order_id)
 		'menge' => 1,
 		'langtext' => $versand_langtext
 	);
-
 
 	return $positions;
 }
