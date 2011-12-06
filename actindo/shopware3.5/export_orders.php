@@ -161,6 +161,7 @@ function export_orders_list($filters=array(), $from=0, $count=0x7FFFFFFF)
 			'cashExpress' => 'NN',
 			'FinanzkaufBySantander' => 'FZ',
 			'sofortueberweisung' => 'SU',
+			'billsafe_invoice' => 'BS',
 		);
 		$actindoorder['customer']['verf'] = $verfmap[$actindoorder['_payment_method']];
 		if(is_null($actindoorder['customer']['verf']))
@@ -292,7 +293,7 @@ function export_orders_positions($order_id)
 		}   // if( $pos['modus'] == 0 || $pos['modus'] == 1 )
 		// Holger, dann wollen wir mal in meinem Durcheinander ein wenig aufräumen
 		//         und gleichzeitig den Artikel Langtext nutzen ...
-		$pos['langtext'] = "";
+		$pos['langtext'] = '';
 
 		// Special Thanks to HR
 		if($pos['modus']==0) { // regulärer Artikel
@@ -316,13 +317,13 @@ function export_orders_positions($order_id)
                            AND `l`.`customergroups` IN (`customergroups`)
                            AND `l`.`valid_from` < `o`.`ordertime` < `l`.`valid_to`");
 			if(is_array($row0)&&isset($row0['preis'])) {
-				$pos['langtext'] .= "<p><b>Liveshopping Artikel</b><br>\n<i>Regul&auml;rer Preis: ".number_format($row0['preis'], 2, ',', '.').
-						" EUR, Sie sparen ".round((1-$pos['price']/$row0['preis'])*100, 2)."%</i></p>";
+				$pos['langtext'] .= '<b>Liveshopping Artikel</b><br><i>Regul&auml;rer Preis: '.number_format($row0['preis'], 2, ',', '.').
+						' EUR, Sie sparen '.round((1-$pos['price']/$row0['preis'])*100, 2).'%</i>';
 			}
 		}
 
 		if($pos['modus']==1) { // Prämien Artikel
-			$pos['langtext'] .= "<p><i>".Shopware()->Snippets()->getSnippet()->get('CartItemInfoPremium')."</i></p>";
+			$pos['langtext'] .= "<i>".Shopware()->Snippets()->getSnippet()->get('CartItemInfoPremium')."</i>";
 		}
 
 		// Special Thanks to HR
@@ -391,12 +392,9 @@ function export_orders_positions($order_id)
 			}
 
 			// Position hübsch machen
-			$pos['name'] = Shopware()->Snippets()->getSnippet()->get('CartItemInfoBundle');
 			$pos['articleordernumber'] = 'bundle';
-			$pos['langtext'] .= "<p>";
-			if(isset($row0['name']))
-				$pos['langtext'] .= "<i>".$row0['name']."</i><br>\n";
-			$pos['langtext'] .= "<i>Artikel #".$bundleArticle['number'].", ".$bundleArticle['name']."</i></p>";
+			$pos['name'] = '"'.$row0['name'].'"';
+			$pos['langtext'] .= '<b>'.ucwords(strtolower( Shopware()->Snippets()->getSnippet()->get('CartItemInfoBundle') )).'</b>, Artikel #'.$bundleArticle['number'];
 		}
 
 		$product = array(
@@ -419,7 +417,8 @@ function export_orders_positions($order_id)
 	if(isset($bundleOrdernumbers)) {
 		foreach ($positions as $key => $val) {
 			if(in_array($val['art_nr'], $bundleOrdernumbers)) {
-				$positions[$key]['langtext'] .= "<p><b>Bundle Artikel</b><br>\n<i>Sie haben durch unser Bundle Angebot bei diesem Artikel gespart.</i></p>";
+				if ($positions[$key]['langtext'] <> "") $positions[$key]['langtext'] .= '<br>';
+				$positions[$key]['langtext'] .= '<b>Bundle Artikel</b>';
 			}
 		}
 	}
