@@ -394,7 +394,15 @@ function _do_import_properties($data, $product, $languages, $default_language_co
 					$id = (int)substr($prop['field_id'], 6);
 					if(!in_array($id, $valid_filter_ids))
 						continue;
-					$sql1 = "INSERT INTO `s_filter_values` (`groupID`, `optionID`, `articleID`, `value`) VALUES( ".(int)$filter_group_id.", ".(int)$id.", ".(int)$art_id.", ".act_quote($prop['field_value'])." )";
+					
+					// Holger es können mehrere Filter mit dem pipe Symbol | übergeben werden. 
+					// Bisher speichert der import es "dumm" als einen Wert was falsch ist, es muß in mehrere Werte gesplittet werden.
+					$sql1 = "INSERT INTO `s_filter_values` (`groupID`, `optionID`, `articleID`, `value`) VALUES ";
+					$fv_array = explode ("|", $prop['field_value']);
+					while (list($key, $val) = each($fv_array)) {
+						if ($key > 0) $sql1 .= ", ";
+						$sql1 .= "( ".(int)$filter_group_id.", ".(int)$id.", ".(int)$art_id.", ".act_quote($val)." )";
+					}
 					if($result = act_db_query($sql1)===false) {
 						return array('ok' => FALSE, 'errno' => EIO, 'error' => 'Fehler beim speichern der neuen Filter-Werte (Zusatzfelder)');
 					}
