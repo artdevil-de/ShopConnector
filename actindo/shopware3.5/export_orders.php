@@ -299,7 +299,7 @@ function export_orders_positions($order_id)
 		if($pos['modus']==0) { // regulärer Artikel
 			// Liveshopping Artikel markieren
 			unset($row0);
-			$row0 = act_get_row("SELECT `a`.`price` as `preis`
+			$row0 = act_get_row("SELECT ( if(`a`.`price` > `a`.`pseudoprice`,`a`.`price`,`a`.`pseudoprice`) * 1.19) as `preis` 
                            FROM `s_order` as `o`
                            INNER JOIN `s_order_details` as `d`
                            ON  (`o`.`id` = `d`.`orderID`)
