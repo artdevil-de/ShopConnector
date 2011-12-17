@@ -82,14 +82,14 @@ function export_orders_list($filters=array(), $from=0, $count=0x7FFFFFFF)
 			'external_order_id' => $order['order_number'],
 			'project_id' => $order['order_number'],
 			'customer' => array(
-				/* 'deb_kred_id' => $customer['customernumber'] > 0 ? $customer['customernumber'] : 0, */ /* MB: bug #5933 */
+				/* 'deb_kred_id' => (int)($customer['customernumber'] > 0 ? $customer['customernumber'] : 0), */ /* MB: bug #5933 */
 				'anrede' => $salutation_map[$customer['billing_salutation']],
 				'kurzname' => !empty($customer['billing_company']) ? $customer['billing_company'] : sprintf("%s, %s", $customer['billing_lastname'], $customer['billing_firstname']),
 				'firma' => $customer['billing_company'],
 				'name' => $customer['billing_lastname'],
 				'vorname' => $customer['billing_firstname'],
-				'adresse' => $customer['billing_street'].' '.strtr($customer['billing_streetnumber'], array(' ' => '')),
-				'adresse2' => $customer['billing_department'],
+				'adresse' => trim($customer['billing_street']).' '.trim( strtr($customer['billing_streetnumber'], array(' ' => '')) ),
+				'adresse2' => trim($customer['billing_department']),
 				'plz' => $customer['billing_zipcode'],
 				'ort' => $customer['billing_city'],
 				'land' => $customer['billing_countryiso'],
@@ -97,6 +97,7 @@ function export_orders_list($filters=array(), $from=0, $count=0x7FFFFFFF)
 				'fax' => $customer['billing_fax'],
 				'ustid' => $customer['ustid'],
 				'email' => $customer['email'],
+				'_customers_id' => (int)$order['userID'],
 				'preisgruppe' => $customer['preisgruppe'],
 				'gebdat' => $customer['birthday'],
 			),
@@ -105,8 +106,8 @@ function export_orders_list($filters=array(), $from=0, $count=0x7FFFFFFF)
 				'firma' => $customer['shipping_company'],
 				'name' => $customer['shipping_lastname'],
 				'vorname' => $customer['shipping_firstname'],
-				'adresse' => $customer['shipping_street'].' '.strtr($customer['shipping_streetnumber'], array(' ' => '')),
-				'adresse2' => $customer['shipping_department'],
+				'adresse' => trim($customer['shipping_street']).' '.trim( strtr($customer['shipping_streetnumber'], array(' ' => '')) ),
+				'adresse2' => trim($customer['shipping_department']),
 				'plz' => $customer['shipping_zipcode'],
 				'ort' => $customer['shipping_city'],
 				'land' => $customer['shipping_countryiso'],
@@ -114,7 +115,7 @@ function export_orders_list($filters=array(), $from=0, $count=0x7FFFFFFF)
 				'fax' => $customer['billing_fax'],
 				'ustid' => $customer['ustid'],
 			),
-			/* 'deb_kred_id' => $customer['customernumber'] > 0 ? $customer['customernumber'] : 0, */
+			/* 'deb_kred_id' => (int)($customer['customernumber'] > 0 ? $customer['customernumber'] : 0), */
 			'_customers_id' => (int)$order['userID'],
 			// 'payment_method' needs special mapping
 

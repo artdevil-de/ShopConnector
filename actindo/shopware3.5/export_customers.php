@@ -95,8 +95,8 @@ function export_customers_list($just_list=TRUE, $filters=array())
 				'firma' => $customer['company'],
 				'name' => $customer['lastname'],
 				'vorname' => $customer['firstname'],
-				'adresse' => $customer['street'].' '.strtr($customer['streetnumber'], array(' ' => '')),
-				'adresse2' => $customer['department'],
+				'adresse' => trim($customer['street']).' '.trim( strtr($customer['streetnumber'], array(' ' => '')) ),
+				'adresse2' => trim($customer['department']),
 				'plz' => $customer['zipcode'],
 				'ort' => $customer['city'],
 				'land' => $customer['countryiso'],
@@ -120,17 +120,51 @@ function export_customers_list($just_list=TRUE, $filters=array())
 			foreach ($delivery_rows as $delivery) {
 				$actindodelivery = array(
 					'delivery_id' => (int)$delivery['id'],
-					'delivery_kurzname' => !empty($delivery['company']) ? $delivery['company'] : $delivery['lastname'],
+					'delivery_anrede' => $salutation_map[$delivery['salutation']],
 					'delivery_firma' => $delivery['company'],
 					'delivery_name' => $delivery['lastname'],
 					'delivery_vorname' => $delivery['firstname'],
-					'delivery_adresse' => $delivery['street'].' '.strtr($delivery['streetnumber'], array(' ' => '')),
-					'delivery_adresse2' => $delivery['department'],
+					'delivery_adresse' => trim($delivery['street']).' '.trim( strtr($delivery['streetnumber'], array(' ' => '')) ),
+					'delivery_adresse2' => trim($delivery['department']),
 					'delivery_plz' => $delivery['zipcode'],
 					'delivery_ort' => $delivery['city'],
 					'delivery_land' => $delivery['countryiso'],
+					'delivery_ustid' => $customer['ustid'],
 				);
-				$actindocustomer['delivery_addresses'][] = $actindodelivery;
+
+				// holger, compare if billing address is identical to delivery address
+				// if yes, don't pass it on as actindo will use the billing address by default
+				$result = array_diff(
+					array(
+					$actindocustomer['anrede'],
+					$actindocustomer['firma'],
+					$actindocustomer['name'],
+					$actindocustomer['vorname'],
+					$actindocustomer['adresse'],
+					$actindocustomer['adresse2'],
+					$actindocustomer['plz'],
+					$actindocustomer['ort'],
+					$actindocustomer['land'],
+					$actindocustomer['ustid']
+					),
+					array(
+					$actindodelivery['delivery_anrede'],
+					$actindodelivery['delivery_firma'],
+					$actindodelivery['delivery_name'],
+					$actindodelivery['delivery_vorname'],
+					$actindodelivery['delivery_adresse'],
+					$actindodelivery['delivery_adresse2'],
+					$actindodelivery['delivery_plz'],
+					$actindodelivery['delivery_ort'],
+					$actindodelivery['delivery_land'],
+					$actindodelivery['delivery_ustid']
+					)
+				);
+				if( count($result) == 0) { unset($actindodelivery); }
+
+				if(is_array($actindodelivery)) {
+					$actindocustomer['delivery_addresses'][] = $actindodelivery;
+				}
 			}
 			if(is_array($actindodelivery)) {
 				$actindocustomer = array_merge($actindocustomer, $actindodelivery);   // merge standard delivery address
