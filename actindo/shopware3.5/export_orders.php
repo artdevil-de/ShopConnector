@@ -84,14 +84,14 @@ function export_orders_list($filters=array(), $from=0, $count=0x7FFFFFFF)
 			'customer' => array(
 				/* 'deb_kred_id' => (int)($customer['customernumber'] > 0 ? $customer['customernumber'] : 0), */ /* MB: bug #5933 */
 				'anrede' => $salutation_map[$customer['billing_salutation']],
-				'kurzname' => !empty($customer['billing_company']) ? $customer['billing_company'] : sprintf("%s, %s", $customer['billing_lastname'], $customer['billing_firstname']),
-				'firma' => $customer['billing_company'],
-				'name' => $customer['billing_lastname'],
-				'vorname' => $customer['billing_firstname'],
+				'kurzname' => !empty($customer['billing_company']) ? trim($customer['billing_company']) : sprintf("%s, %s", trim($customer['billing_lastname']), trim($customer['billing_firstname'])),
+				'firma' => trim($customer['billing_company']),
+				'name' => trim($customer['billing_lastname']),
+				'vorname' => trim($customer['billing_firstname']),
 				'adresse' => trim($customer['billing_street']).' '.trim( strtr($customer['billing_streetnumber'], array(' ' => '')) ),
 				'adresse2' => trim($customer['billing_department']),
-				'plz' => $customer['billing_zipcode'],
-				'ort' => $customer['billing_city'],
+				'plz' => trim($customer['billing_zipcode']),
+				'ort' => trim($customer['billing_city']),
 				'land' => $customer['billing_countryiso'],
 				'tel' => $customer['billing_phone'],
 				'fax' => $customer['billing_fax'],
@@ -103,13 +103,13 @@ function export_orders_list($filters=array(), $from=0, $count=0x7FFFFFFF)
 			),
 			'delivery' => array(
 				'anrede' => $salutation_map[$customer['shipping_salutation']],
-				'firma' => $customer['shipping_company'],
-				'name' => $customer['shipping_lastname'],
-				'vorname' => $customer['shipping_firstname'],
+				'firma' => trim($customer['shipping_company']),
+				'name' => trim($customer['shipping_lastname']),
+				'vorname' => trim($customer['shipping_firstname']),
 				'adresse' => trim($customer['shipping_street']).' '.trim( strtr($customer['shipping_streetnumber'], array(' ' => '')) ),
 				'adresse2' => trim($customer['shipping_department']),
-				'plz' => $customer['shipping_zipcode'],
-				'ort' => $customer['shipping_city'],
+				'plz' => trim($customer['shipping_zipcode']),
+				'ort' => trim($customer['shipping_city']),
 				'land' => $customer['shipping_countryiso'],
 				'tel' => $customer['billing_phone'], // no shipping_ equivalent
 				'fax' => $customer['billing_fax'],
@@ -395,7 +395,7 @@ function export_orders_positions($order_id)
 			// Position hübsch machen
 			$pos['articleordernumber'] = 'bundle';
 			$pos['name'] = '"'.$row0['name'].'"';
-			$pos['langtext'] .= '<b>'.ucwords(strtolower( Shopware()->Snippets()->getSnippet()->get('CartItemInfoBundle') )).'</b>, Artikel #'.$bundleArticle['number'];
+			$pos['langtext'] .= '<b>'.mb_convert_case(Shopware()->Snippets()->getSnippet()->get('CartItemInfoBundle'), MB_CASE_TITLE).'</b>, Artikel #'.$bundleArticle['number'];
 		}
 
 		$product = array(
