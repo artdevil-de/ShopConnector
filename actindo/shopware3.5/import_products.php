@@ -586,8 +586,8 @@ function _do_set_article_attributes($combination_advanced, &$options, &$values, 
 		}
 
 		// Holger, EAN als "Freitext 1" im Konfigurator
-		if(isset($comb['shop']['art']['products_ean']) && ((int)act_quote($comb['shop']['art']['products_ean']) <> 0) ) {
-			$vals[] = "`gv_attr1`=".(int)act_quote($comb['shop']['art']['products_ean']);
+		if(isset($comb['shop']['art']['products_ean']) && ((int)$comb['shop']['art']['products_ean'] <> 0) ) {
+			$vals[] = "`gv_attr1`=".act_quote($comb['shop']['art']['products_ean']);
 		}
 		// Holger, shippingtime als "Freitext 2" im Konfigurator
 		if(isset($comb['data']["shipping_status"]) ) {
