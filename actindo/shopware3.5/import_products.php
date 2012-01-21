@@ -459,11 +459,26 @@ function _do_import_content($data, $product, $languages, $default_language_code,
           `target`=".act_quote(isset($content['content_link_target']) ? $content['content_link_target'] : '_blank');
 				$res &= act_db_query($sql);
 			} else if($content['type']=='file') {
+				// Holger, dann gleichen wir den Artikel Upload dem von Shopware mal an
+				// Es nervt das "$bn" am Anfang des Datei Namen, dadurch wird der schöne Dateiname vernichtet, ein SEO-no-go
+				$filename = $content['content_file_name'];
+				
+				$filename = explode(".", $filename);
+				$filenameext = $filename[count($filename)-1];
+				if (in_array($filenameext,array("php","php5","php4","phtml","cgi","pl","php3","py","exe","bat","com"))){
+					return array('ok' => FALSE, 'errno' => EIO, 'error' => "Downloads: Shopware Fehler: Dateien vom Typ '{$filenameext}' sind verboten.");
+				}
+
+				$filename = $filename[0];
+				$filename = str_replace(" ","",$filename);
+				$filename = $filename."-".$id.rand(0,10000).".".$filenameext;
+
+				// Holger ende, actindo übernehmen sie
 				$file = actindo_create_temporary_file($content['content']);
 				if(!$file['ok'])
 					return $file;
-				$bn = basename($file['file']);
-				$uploadpath = realpath($import->sPath.$import->sSystem->sCONFIG['sARTICLEFILES'])."/".$bn.'-'.$content['content_file_name'];
+				//$bn = basename($file['file']);
+				$uploadpath = realpath($import->sPath.$import->sSystem->sCONFIG['sARTICLEFILES'])."/".$filename;
 				$result = rename($file['file'], $uploadpath);
 				if(!$result) {
 					return array('ok' => FALSE, 'errno' => EIO, 'error' => "Downloads: Konnte Datei '{$file['file']}' nicht in '{$uploadpath}' umbenennen.");
