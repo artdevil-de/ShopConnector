@@ -304,6 +304,7 @@ function _do_import_images($art_id, &$product, $default_language_code, $is_child
 
 //        echo "\n\nIMAGE: ".var_dump_string($image['position']).'='.var_dump_string($image)."\n";
 
+				devil_connectorNG_image_seo_name($image, $img, $default_language_code);
 				$res = $import->sArticleImage($image);
 				if($image['main']==1)
 					$primary_image = $res;
