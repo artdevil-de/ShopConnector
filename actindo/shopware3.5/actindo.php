@@ -587,7 +587,7 @@ function shop_get_connector_version(&$arr, $params)
 {
 	global $export;
 
-	$revision = '$Revision: 394-HR-fix1 $';
+	$revision = '$Revision: 394-devil0.3 $';
 	$arr = array(
 		'revision' => $revision,
 		'protocol_version' => '2.'.substr($revision, 11, -2),
