@@ -31,7 +31,11 @@ function import_product($product)
 	if(!is_array($product)||!count($product)) {
 		return array('ok' => FALSE, 'errno' => EINVAL);
 	}
-
+	
+	// Holger, check if 'art_nr' is valid for shopware 'ordernumber'
+	if (!(devil_connectorNG_artnr_isValid($product['art_nr'],$devil_match) )) {
+		return array('ok' => FALSE, 'errno' => EINVAL, 'error' => "Shopware Fehler: '{$devil_match[0]}' ist ein ungültige Zeichen, bitte ändern Sie die Artikelnummer in actindo.<br><br>Sollten Sie die Artikelnummer nicht ändern können oder wollen, wenden Sie sich bitte an <a href='http://artdevil.de/' target='_blank'>www.artdevil.de (link in neuem Fenster)</a>, wir bieten Ihnen eine Lösung für dieses Problem.");
+	}
 
 	// check primary category
 	$sql = "SELECT `id` FROM `s_categories` WHERE `id`=".(int)$product['swg'];
@@ -577,6 +581,12 @@ function _do_set_article_attributes($combination_advanced, &$options, &$values, 
 
 	$default_standard = 0;
 	foreach ($combination_advanced as $want_art_nr => $comb) {
+
+		// Holger, check if '$want_art_nr' is valid for shopware 'ordernumber'
+		if (!(devil_connectorNG_artnr_isValid($want_art_nr,$devil_match) )) {
+			return array('ok' => FALSE, 'errno' => EINVAL, 'error' => "Shopware Fehler: '{$devil_match[0]}' ist ein ungültige Zeichen, bitte ändern Sie die Attribute-Artikelnummer in actindo.<br><br>Sollten Sie die Artikelnummer nicht ändern können oder wollen, wenden Sie sich bitte an <a href='http://artdevil.de/' target='_blank'>www.artdevil.de (link in neuem Fenster)</a>, wir bieten Ihnen eine Lösung für dieses Problem.");
+		}
+
 		$vals = array();
 		$relations = array();
 		foreach ($comb['attribute_value_id'] as $_idx => $_value_id) {
