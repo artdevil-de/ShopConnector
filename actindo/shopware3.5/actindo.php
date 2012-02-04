@@ -15,7 +15,7 @@ error_reporting(E_ALL);
  * @link    http://artdevil.de/ShopConnector ShopConnector Seite auf ArtDevil.de
  * @copyright Copyright (c) 2011, Holger Ronecker, devil@artdevil.de
  */
-define( 'ACTINDO_SHOPCONN_REVISION', '$Revision: 404-devil0.3 $' );
+define( 'ACTINDO_SHOPCONN_REVISION', '$Revision: 404-devil0.4 $' );
 define( 'ACTINDO_PROTOCOL_REVISION', '2.'.substr( ACTINDO_SHOPCONN_REVISION, 11, -2 ) );
 
 if(ACTINDO_CONNECTOR_TYPE=='shopware3.5'||ACTINDO_CONNECTOR_TYPE=='shopware3.04'||ACTINDO_CONNECTOR_TYPE=='shopware3.03')	 // do not use is_shopware3 here...
