@@ -43,14 +43,15 @@ require_once( 'import_products.php' );
 require_once( 'artdevil_util.php' );
 
 /**
- * @done
+ * ShopConnectorNG by artdevil.de
+ * - no changes necessary, already efficient use of Shopware API
  */
 function categories_get($params)
 {
 	if(!parse_args($params, $ret))
 		return $ret;
 
-	global $export, $sprache;
+	global $export;
 	$mask = array(
 		"childs" => "children",
 		"id" => "categories_id",
