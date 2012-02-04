@@ -67,72 +67,172 @@ function categories_get($params)
 	return resp(array('ok' => TRUE, 'categories' => $cats));
 }
 
+/**
+ * ShopConnectorNG by artdevil.de
+ * - rewrote code to use Shopware API
+ * - solved the "can not move category" problem, categories can now be moved from within actindo
+ * - introduced a workaround for a bug in actindos category move signaling
+ */
 function category_action($params)
 {
 	if(!parse_args($params, $ret))
 		return $ret;
 
-	global $export;
+	global $import,$export;
 	$default_lang = default_lang();
 
 	list( $point, $id, $pid, $aid, $data ) = $params;
 
-	$position = 0;
-	if(($pid||$aid)&&$point!='delete'&&$point!='textchange') {
-		$sql = "SELECT MAX(position) AS position FROM `s_categories` WHERE ".($aid ? "`id`=".(int)$aid : "`parent`=".(int)$pid)." GROUP BY 1=1";
-		$row = act_get_row($sql);
-		if(is_array($row)&&count($row)) {
-			$position = (int)$row['position']+1;
-		}
-	}
-
 	if($point=='add') {
-		if($position) {
-			$sql = "UPDATE `s_categories` SET position=position+1 WHERE position>={$position} AND parent=".(int)$pid;
-			$res = act_db_query($sql);
-		}
-
-		// Beim anlegen von neuen Warengruppen, standard Template setzen und Gruppe aktivieren
-		if($position<1)
-			$position = 1;
-
-		$sql = "SELECT * FROM `s_core_config` WHERE `name` LIKE 'sCATEGORY_DEFAULT_TPL'";
-		$row = act_get_row($sql);
-		if(!(is_array($row))) {
-			$row['value'] = 'article_listing_3col.tpl';
-		}
-
 		$category = array(
-			'id' => 'NULL',
-			'parent' => (int)$pid,
-			'description' => act_quote($data['description'][$default_lang]['name']),
-			'position' => (int)$position,
-			'template' => $export->sDB->qstr($row['value']),
-			'active' => 1,
+			'id' => $id,
+			'description' => $data['description'][$default_lang]['name'],
+			'parent' => $pid,
+			'metakeywords' => $data['description'][$default_lang]['name'],
+			'active' => 1
 		);
+		$res = $import->sCategory($category);
+		if(!$res)
+			return xmlrpc_error(EIO, 'Fehler beim Anlegen der Kategorie');
 
-		$sql = "INSERT INTO `s_categories` (id, parent, position, description, template, active) VALUE ({$category['id']}, {$category['parent']}, {$category['position']}, {$category['description']}, {$category['template']}, {$category['active']})";
-		act_db_query($sql);
-		$category['id'] = act_insert_id();
-		if($category['id'])
-			return resp(array('ok' => TRUE, 'id' => $category['id']));
-		else
-			return xmlrpc_error(EIO);
-	}
-	else if($point=='delete') {
-		$sql = "DELETE FROM `s_categories` WHERE id=".(int)$id." OR parent=".(int)$id;
-		act_db_query($sql);
-		$sql = "DELETE FROM `s_articles_categories` WHERE categoryID=".(int)$id." OR categoryparentID=".(int)$id;
-		act_db_query($sql);
-		return resp(array('ok' => TRUE));
-	} else if($point=='above'||$point=='below'||$point=='append') {
-		return xmlrpc_error(ENOSYS, 'Verschieben von Kategorien wird in Shopware nicht unterstützt.');
-	} else if($point=='textchange') {
-		$sql = "UPDATE `s_categories` SET `description`=".act_quote($data['description'][$default_lang]['name'])." WHERE `id`=".(int)$id;
-		act_db_query($sql);
+	} elseif($point=='delete') {
+		$category = array();
+		$category[] = intval($id);
+		
+		$delcats = $export->sCategories('',intval($id));
+		if (is_array($delcats)) {
+			while (list($key, $val) = each($delcats)) {
+				$category[] = intval($key);
+			}
+		}
+
+		$res = $import->sDeleteCategories($category);
+		if(!$res)
+			return xmlrpc_error(EIO, 'Fehler beim Löschen der Kategorie');
+
+	} elseif($point=='textchange') {
+		$category = array(
+			'id' => $id,
+			'description' => $data['description'][$default_lang]['name'],
+			'metakeywords' => $data['description'][$default_lang]['name']
+		);
+		$res = $import->sCategory($category);
+		if(!$res)
+			return xmlrpc_error(EIO, 'Fehler beim Umbenennen der Kategorie');
+
+	} elseif($point=='above'||$point=='below'||$point=='append') {
+		$sql = "
+			SELECT parent
+			FROM s_categories
+			WHERE id = {$id}
+		";
+		$oldparent = $import->sDB->GetOne($sql);
+
+			$category = array(
+				'id' => $id,
+				'parent' => $pid,
+			);
+			$res = $import->sCategory($category);
+			if(!$res)
+				return xmlrpc_error(EIO, 'Fehler beim Umbenennen der Kategorie');
+
+		$sql = "
+			SELECT id,position
+			FROM s_categories
+			WHERE parent = {$pid}
+			ORDER BY position ASC
+		";
+		$positions = $import->sDB->GetAssoc($sql);
+
+		/**
+		 * actindo bug. Wenn man eine Kategorie in eine andere Mutterkategorie verschiebt und man die 
+		 * Kategorie dabei an Position 2 stellt, schickt actindo ein "above" obwohl ein "below" korrekt wäre.
+		 * Das bekomme ich den Actindos nie erklärt, zumindest werden sie es nicht freiwillig annehmen, daher
+		 * hier ein Workaround der den Bug behebt
+		 */
+		if($point=='above' && $aid <> 0 && $positions[$aid] == 1)
+			$point = 'below';
+	
+		unset($newpositions);
+		if ($point=='below') {
+			foreach ($positions as $cat1 => $pos1)
+			{
+				if($cat1 == $id) {
+				} elseif($cat1 == $aid) {
+					$newpositions[] = $aid;				
+					$newpositions[] = $id;
+				} else {
+					$newpositions[] = $cat1;
+				}
+			}
+		} elseif($point=='above') {
+			if($aid == 0)
+				$newpositions[] = $id;
+			foreach ($positions as $cat1 => $pos1)
+			{
+				if($cat1 == $id) {
+				} elseif($cat1 == $aid) {
+					$newpositions[] = $id;
+					$newpositions[] = $aid;				
+				} else {
+					$newpositions[] = $cat1;
+				}
+			}
+		} elseif($point=='append') {
+			foreach ($positions as $cat1 => $pos1)
+			{
+				if($cat1 == $id) {
+				} else {
+					$newpositions[] = $cat1;
+				}
+			}
+			$newpositions[] = $id;
+		}
+
+		foreach ($newpositions as $pos2 => $cat2)
+		{
+			$category = array(
+				'id' => $cat2,
+				'parent' => $pid,
+				'position' => intval($pos2 + 1)
+			);
+			$res = $import->sCategory($category);
+			if(!$res)
+				return xmlrpc_error(EIO, 'Fehler beim Verschieben der Kategorie');
+		}
+
+		// in eine andere Mutterkategorie verschoben, daher alte Kategorie auch neu sortieren
+		if ($pid <> $oldparent) {
+			$sql = "
+				SELECT id,position
+				FROM s_categories
+				WHERE parent = {$oldparent}
+				ORDER BY position ASC
+			";
+			$positions = $import->sDB->GetAssoc($sql);
+
+			unset($newpositions);
+			foreach ($positions as $cat1 => $pos1)
+			{
+				$newpositions[] = $cat1;
+			}
+
+			foreach ($newpositions as $pos2 => $cat2)
+			{
+				$category = array(
+					'id' => $cat2,
+					'parent' => $oldparent,
+					'position' => intval($pos2 + 1)
+				);
+				$res = $import->sCategory($category);
+				if(!$res)
+					return xmlrpc_error(EIO, 'Fehler beim Verschieben der Kategorie');
+			}
+		}
+
 	}
 
-	return resp(array('ok' => TRUE));
+	return resp(array('ok' => TRUE, 'id' => $res));
 }
 
 /**
