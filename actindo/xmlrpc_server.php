@@ -8,7 +8,7 @@
  *
  * @package actindo
  * @author  Patrick Prasse <pprasse@actindo.de>
- * @version $Revision: 376 $
+ * @version $Revision: 404 $
  * @copyright Copyright (c) 2007, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, pprasse@actindo.de)
  * @license http://opensource.org/licenses/gpl-license.php GNU Public License
  * @author  Holger Ronecker
@@ -83,6 +83,8 @@ set_error_handler('actindo_error_handler');
 if(!defined('ACTINDO_SHOP_CHARSET'))
 	define('ACTINDO_SHOP_CHARSET', ACTINDO_TRANSPORT_CHARSET);
 
+define( 'ACTINDO_CONNECTOR_BASEDIR', realpath(dirname($_SERVER['SCRIPT_FILENAME']).'/') );
+
 
 /* xmlrpc server */
 $arr = array(
@@ -143,7 +145,7 @@ function actindo_get_connector_version($params)
 	$arr0 = array();
 	shop_get_connector_version($arr0, $params);
 
-	$revision = '$Revision: 376 $';
+	$revision = '$Revision: 404 $';
 	$arr = array(
 		'xmlrpc_server_revision' => $revision,
 		// 'protocol_version' => set in shop_get_connector_version,

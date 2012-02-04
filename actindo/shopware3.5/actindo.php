@@ -8,21 +8,24 @@ error_reporting(E_ALL);
  *
  * @package actindo
  * @author  Patrick Prasse <pprasse@actindo.de>
- * @version $Revision: 394 $
+ * @version $Revision: 404 $
  * @copyright Copyright (c) 2007, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, pprasse@actindo.de)
  * @license http://opensource.org/licenses/gpl-license.php GNU Public License
  * @author  Holger Ronecker
  * @link    http://artdevil.de/ShopConnector ShopConnector Seite auf ArtDevil.de
  * @copyright Copyright (c) 2011, Holger Ronecker, devil@artdevil.de
  */
+define( 'ACTINDO_SHOPCONN_REVISION', '$Revision: 404-devil0.3 $' );
+define( 'ACTINDO_PROTOCOL_REVISION', '2.'.substr( ACTINDO_SHOPCONN_REVISION, 11, -2 ) );
+
 if(ACTINDO_CONNECTOR_TYPE=='shopware3.5'||ACTINDO_CONNECTOR_TYPE=='shopware3.04'||ACTINDO_CONNECTOR_TYPE=='shopware3.03')	 // do not use is_shopware3 here...
 	require_once('api.php');
 else
 	require_once('../api.php');
 
 
-define('SHOPWARE_BASEPATH', realpath(dirname($_SERVER['SCRIPT_FILENAME']).'/../../../../'));
-
+define( 'SHOPWARE_BASEPATH', $swd=realpath(dirname($_SERVER['SCRIPT_FILENAME']).'/../../../../') );
+define( 'ACTINDO_SHOP_BASEDIR', $swd );
 
 $api = new sAPI();
 $mapping = & $api->convert->mapping;
@@ -587,7 +590,7 @@ function shop_get_connector_version(&$arr, $params)
 {
 	global $export;
 
-	$revision = '$Revision: 394-devil0.3 $';
+	$revision = ACTINDO_SHOPCONN_REVISION;
 	$arr = array(
 		'revision' => $revision,
 		'protocol_version' => '2.'.substr($revision, 11, -2),

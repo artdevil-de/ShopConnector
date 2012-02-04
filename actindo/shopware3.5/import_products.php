@@ -7,7 +7,7 @@
  *
  * @package actindo
  * @author Patrick Prasse <prasse@actindo.de>
- * @version $Revision: 394 $
+ * @version $Revision: 397 $
  * @copyright Copyright (c) 2008, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, haimerl@actindo.de)
  * @license http://opensource.org/licenses/gpl-license.php GNU Public License
  * @author  Holger Ronecker
@@ -176,7 +176,7 @@ function import_product($product)
 
 	$res = $import->sArticle($data, array('update' => true, 'ignore_configurator' => true));
 	if(!is_array($res)) {
-		return array('ok' => FALSE, 'errno' => EIO, 'error' => 'Fehler beim anlegen / updaten des Artikels');
+		return array('ok' => FALSE, 'errno' => EIO, 'error' => 'Fehler beim anlegen / updaten des Artikels: API-Fehler von Shopware: '.act_get_shopware_errors($import->sAPI->sGetErrors()) );
 	}
 	$data['articledetailsID'] = (int)$res['articledetailsID'];
 	$data['articleID'] = (int)$res['articleID'];

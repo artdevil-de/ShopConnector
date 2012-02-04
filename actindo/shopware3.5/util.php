@@ -7,7 +7,7 @@
  *
  * @package actindo
  * @author  Patrick Prasse <pprasse@actindo.de>
- * @version $Revision: 390 $
+ * @version $Revision: 404 $
  * @copyright Copyright (c) 2008, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, pprasse@actindo.de)
  * @author  Holger Ronecker
  * @link    http://artdevil.de/ShopConnector ShopConnector Seite auf ArtDevil.de
@@ -71,7 +71,7 @@ function act_have_table($name)
 
 	$have = FALSE;
 	$res = $db->Execute("SHOW TABLES LIKE '".esc($name)."'");
-	while ($n = $res->FetchRow()) {	// get mixed case here, therefore check again
+	while ($n = $res->FetchRow()) { // get mixed case here, therefore check again
 		reset($n);
 		$n = current($n);
 		if(!strcmp($n, $name)) {
@@ -207,7 +207,7 @@ function actindo_get_fields($attr_fields=TRUE, $filter_fields=TRUE)
 				'time' => 'timefield',
 			);
 			while ($row = $result->FetchRow()) {
-				if(isset($xlation_fields[$row['databasefield']]))	 // if this field is otherwise already in use (EAN for example)
+				if(isset($xlation_fields[$row['databasefield']]))  // if this field is otherwise already in use (EAN for example)
 					continue;
 
 				$type = isset($domtype_translation[$row['domtype']]) ? $domtype_translation[$row['domtype']] : 'textfield';
@@ -446,7 +446,7 @@ function act_get_row($sql)
 	if(!is_object($res))
 		return FALSE;
 	$row = act_db_fetch_assoc($res);
-	if($row===FALSE)	// no more rows
+	if($row===FALSE) // no more rows
 		return null;
 	act_db_free($res);
 	return $row;
@@ -475,6 +475,112 @@ function act_db_error()
 {
 	global $export;
 	return $export->sDB->ErrorMsg();
+}
+
+function act_get_shopware_errors($errors)
+{
+	$errors_str = array();
+	foreach ($errors as $_err) {
+		$errors_str[] = sprintf("Code %d: %s", $_err['code'], $_err['message']);
+	}
+	return implode("\n", $errors_str);
+}
+
+function actindo_do_checksums($subdirectory='', $pattern='*', $checksum_type='MD5', $recursive=TRUE)
+{
+	$path = add_last_slash(ACTINDO_SHOP_BASEDIR).$subdirectory;
+	if(is_file($path)) {
+		$files_arr = array($subdirectory => _checksum_file($path, $checksum_type));
+	} else {
+		$files_arr = array();
+		$files_arr_2 = _checksum_dir($path, $pattern, $checksum_type, $recursive);
+		foreach ($files_arr_2 as $_fn => $_cs) {
+			$_fn = substr($_fn, strlen($path));
+			$files_arr[$_fn] = $_cs;
+		}
+	}
+
+	$conn_relative_dir = 'engine/connectors/api/actindo/';
+
+	foreach (array_keys($files_arr) as $fn) {
+		if(strpos($fn, $conn_relative_dir)===0) {
+			$fn1 = strtr($fn, array($conn_relative_dir => 'SHOPCONN-'.constant('ACTINDO_PROTOCOL_REVISION').'/'));
+			$files_arr[$fn1] = $files_arr[$fn];
+			unset($files_arr[$fn]);
+		}
+	}
+
+	return array('ok' => TRUE, 'basedir' => $path, 'files' => $files_arr);
+}
+
+function _checksum_dir($dirname, $pattern, $checksum_type, $recursive)
+{
+	$dirs = array();
+	$files = array();
+
+	$dir = opendir($dirname);
+	if(!is_resource($dir))
+		return FALSE;
+
+	while ($fn = readdir($dir)) {
+		if($fn=='.'||$fn=='..')
+			continue;
+
+		if($fn=='templates_c')
+			continue;
+		if($fn=='cache')
+			continue;
+
+		$basename = $fn;
+		$fn = add_last_slash($dirname).$fn;
+
+		if(is_dir($fn))
+			$dirs[] = $fn;
+		else if(is_file($fn)&&(!function_exists('fnmatch')||fnmatch($pattern, $basename))) {
+			$files[$fn] = _checksum_file($fn, $checksum_type);
+		}
+	}
+	closedir($dir);
+
+	if($recursive&&count($dirs)) {
+		foreach ($dirs as $_dir) {
+			$files = array_merge($files, _checksum_dir($_dir, $pattern, $checksum_type, $recursive));
+		}
+	}
+
+	return $files;
+}
+
+function _checksum_file($fn, $checksum_type='MD5')
+{
+	if(!is_readable($fn)) {
+		return 'UNREADABLE';
+	}
+
+	if(empty($checksum_type))
+		return 'NO-CHECKSUM-TYPE';
+
+	if($checksum_type=='FILESIZE')
+		return filesize($fn);
+
+	$data = file_get_contents($fn);
+	if($checksum_type=='MD5') {
+		$data = md5($data);
+	} else if($checksum_type=='SHA1') {
+		$data = sha1($data);
+	} else if($checksum_type=='MD5-TRIM') {
+		$data = strtr($data, array("\r" => "", "\n" => "", "\t" => "", " " => ""));
+		$data = md5(trim($data));
+	} else if($checksum_type=='SHA1-TRIM') {
+		$data = strtr($data, array("\r" => "", "\n" => "", "\t" => "", " " => ""));
+		$data = sha1(trim($data));
+	} else if($checksum_type=='SIZE') {
+		$data = strlen($data);
+	} else if($checksum_type=='SIZE-TRIM') {
+		$data = strtr($data, array("\r" => "", "\n" => "", "\t" => "", " " => ""));
+		$data = strlen(trim($data));
+	}
+	return $data;
 }
 
 ?>
