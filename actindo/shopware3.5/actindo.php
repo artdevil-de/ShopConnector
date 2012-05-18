@@ -245,11 +245,9 @@ function category_action($params)
         return xmlrpc_error(ENOSYS, 'Verschieben von Kategorien wird erst ab Shopware 3.5.5 unterstützt');
     }
 
-    /*
-     * $id = category id to move
-     * $pid = parent category of $pid
-     * $aid = reference category (to move above/below / append)
-     */
+     // $id = category id to move
+     // $pid = parent category of $pid
+     // $aid = reference category (to move above/below / append)
     
     $oldParents = aGetCategoryParents($id);
 
