@@ -7,7 +7,7 @@
  *
  * @package actindo
  * @author  Patrick Prasse <pprasse@actindo.de>
- * @version $Revision: 293 $
+ * @version $Revision: 441 $
  * @copyright Copyright (c) 2007, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, pprasse@actindo.de)
  * @license http://opensource.org/licenses/gpl-license.php GNU Public License
  * @author  Holger Ronecker
@@ -181,7 +181,7 @@ function create_query_from_filter($request, $mapping, $default_order=null)
 				$q .= $op[$filter['comparison']];
 				$q .= "'".esc($filter['value'])."'";
 			} else if($filter['type']=='list') {
-				$vals = split(',', $filter['value']);
+				$vals = explode(',', $filter['value']);
 				$args = array();
 				foreach ($vals as $_val) {
 					$args[] = "'".esc($_val)."'";

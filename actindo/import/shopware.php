@@ -1939,6 +1939,7 @@ class sShopwareImport
 				$categoryID = 1;
 			}
 		}
+		if(empty($categories)) return;
 		$categories = implode(',', $categories);
 		
 		$sql = "

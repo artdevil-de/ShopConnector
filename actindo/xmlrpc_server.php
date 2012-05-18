@@ -8,7 +8,7 @@
  *
  * @package actindo
  * @author  Patrick Prasse <pprasse@actindo.de>
- * @version $Revision: 404 $
+ * @version $Revision: 409 $
  * @copyright Copyright (c) 2007, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, pprasse@actindo.de)
  * @license http://opensource.org/licenses/gpl-license.php GNU Public License
  * @author  Holger Ronecker
@@ -145,7 +145,7 @@ function actindo_get_connector_version($params)
 	$arr0 = array();
 	shop_get_connector_version($arr0, $params);
 
-	$revision = '$Revision: 404 $';
+	$revision = '$Revision: 409 $';
 	$arr = array(
 		'xmlrpc_server_revision' => $revision,
 		// 'protocol_version' => set in shop_get_connector_version,
@@ -238,7 +238,7 @@ function xmlrpc_error($code, $string=null)
 	if($code==0&&!empty($string))
 		return new xmlrpcresp(0, EUNKNOWN, $string);
 
-	return new xmlrpcresp(0, $code, !empty($string) ? $string : strerror($code));
+	return new xmlrpcresp(0, $code, !empty($string) ? $string : actstrerror($code));
 }
 $GLOBALS['cp1252_map'] = array(
 	"\xc2\x80" => "\xe2\x82\xac", /* EURO SIGN */

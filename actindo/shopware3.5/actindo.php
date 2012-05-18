@@ -8,14 +8,14 @@ error_reporting(E_ALL);
  *
  * @package actindo
  * @author  Patrick Prasse <pprasse@actindo.de>
- * @version $Revision: 404 $
+ * @version $Revision: 442 $
  * @copyright Copyright (c) 2007, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, pprasse@actindo.de)
  * @license http://opensource.org/licenses/gpl-license.php GNU Public License
  * @author  Holger Ronecker
  * @link    http://artdevil.de/ShopConnector ShopConnector Seite auf ArtDevil.de
  * @copyright Copyright (c) 2011, Holger Ronecker, devil@artdevil.de
  */
-define( 'ACTINDO_SHOPCONN_REVISION', '$Revision: 404-devil0.4 $' );
+define( 'ACTINDO_SHOPCONN_REVISION', '$Revision: 442-devil0.4 $' );
 define( 'ACTINDO_PROTOCOL_REVISION', '2.'.substr( ACTINDO_SHOPCONN_REVISION, 11, -2 ) );
 
 if(ACTINDO_CONNECTOR_TYPE=='shopware3.5'||ACTINDO_CONNECTOR_TYPE=='shopware3.04'||ACTINDO_CONNECTOR_TYPE=='shopware3.03')	 // do not use is_shopware3 here...
@@ -72,6 +72,8 @@ function categories_get($params)
  * - rewrote code to use Shopware API
  * - solved the "can not move category" problem, categories can now be moved from within actindo
  * - introduced a workaround for a bug in actindos category move signaling
+ *
+ * @TODO actindo 2.442 introduced moving. analyse it
  */
 function category_action($params)
 {
@@ -159,7 +161,7 @@ function category_action($params)
 			{
 				if($cat1 == $id) {
 				} elseif($cat1 == $aid) {
-					$newpositions[] = $aid;				
+					$newpositions[] = $aid;
 					$newpositions[] = $id;
 				} else {
 					$newpositions[] = $cat1;
@@ -173,7 +175,7 @@ function category_action($params)
 				if($cat1 == $id) {
 				} elseif($cat1 == $aid) {
 					$newpositions[] = $id;
-					$newpositions[] = $aid;				
+					$newpositions[] = $aid;
 				} else {
 					$newpositions[] = $cat1;
 				}
@@ -234,6 +236,81 @@ function category_action($params)
 
 	return resp(array('ok' => TRUE, 'id' => $res));
 }
+
+/* actindo 2.442
+
+  else if( $point == 'above' || $point == 'below' || $point == 'append' )
+  {
+    if(version_compare('3.5.5', shopware_get_version(), '>')) {
+        return xmlrpc_error(ENOSYS, 'Verschieben von Kategorien wird erst ab Shopware 3.5.5 unterstützt');
+    }
+
+    /*
+     * $id = category id to move
+     * $pid = parent category of $pid
+     * $aid = reference category (to move above/below / append)
+     */
+    
+    $oldParents = aGetCategoryParents($id);
+
+    $category = act_get_row(sprintf('SELECT `id`, `parent`, `position` FROM `s_categories` WHERE `id` = %d', $id));
+    if(!is_array($category)) {
+        return xmlrpc_error(ENOSYS, 'Konnte zu verschiebende Warengruppe nicht finden');
+    }
+
+    $reference = act_get_row(sprintf('SELECT `id`, `parent`, `position` FROM `s_categories` WHERE `id` = %d', $aid));
+    if(!is_array($reference) && $point != 'above') {
+        return xmlrpc_error(ENOSYS, 'Konnte Ziel-Warengruppe nicht finden');
+    }
+
+    if($point == 'above' && $aid == 0) {
+        // increment position for ref and all following cats with the same parent
+        act_db_query(sprintf('UPDATE `s_categories` SET `position` = `position` + 1 WHERE `parent` = %d', $pid));
+        // move category over
+        act_db_query(sprintf('UPDATE `s_categories` SET `parent` = %d, `position` = %d WHERE `id` = %d', $pid, 1, $category['id']));
+    }
+    elseif($point == 'below' || $point == 'append' || ($point == 'above' && $aid > 0)) {
+        // increment position for all rows followed by reference
+        act_db_query(sprintf('UPDATE `s_categories` SET `position` = `position` + 1 WHERE `parent` = %d AND `position` > %d', $reference['parent'], $reference['position']));
+        // move category over
+        act_db_query(sprintf('UPDATE `s_categories` SET `parent` = %d, `position` = %d WHERE `id` = %d', $reference['parent'], $reference['position'] + 1, $category['id']));
+    }
+    // update position value for old category brothers
+    act_db_query(sprintf('UPDATE `s_categories` SET `position` = `position` - 1 WHERE `parent` = %d AND `position` > %d', $category['parent'], $category['position']));
+
+    $newParents = aGetCategoryParents($id);
+    
+    // update s_articles_categories table with new tree
+    $remove = array_diff($oldParents, $newParents);
+    $add    = array_diff($newParents, $oldParents);
+    foreach($add AS $catID) {
+        // add entries for new categories in the tree
+        $parent = (int) array_shift(aGetCategoryParents($catID, 1));
+        if(empty($parent)) continue;
+        $sql = sprintf(
+                   'INSERT IGNORE INTO `s_articles_categories` (`articleID`, `categoryID`, `categoryparentID`)
+                    (
+                        SELECT `articleID`, %d, %d
+                        FROM `s_articles_categories`
+                        WHERE `categoryID` = %d
+                    )', $catID, $parent, $id);
+        act_db_query($sql);
+    }
+    if(!empty($remove)) {
+        // remove entries for categories which are no longer parents
+        $sql = sprintf('
+            DELETE `cat`.*
+            FROM `s_articles_categories` AS `cat`
+            INNER JOIN `s_articles_categories` AS `ref` ON `ref`.`categoryID` = %d AND `ref`.`articleID` = `cat`.`articleID`
+            WHERE `cat`.`categoryID` IN (%s)', $id, implode(',', $remove));
+        act_db_query($sql);
+    }
+
+    return resp(array('ok' => true));
+  }
+
+*/
+
 
 /**
  * @done
@@ -343,6 +420,8 @@ function settings_get($params)
 		);
 	}
 	act_db_free($res);
+
+	$ret['multistores'] = actindo_get_multistores();
 
 	return resp(array('ok' => TRUE, 'settings' => $ret /* , 'shopware_settings'=>$settings */));
 }

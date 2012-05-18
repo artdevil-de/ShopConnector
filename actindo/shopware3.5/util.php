@@ -7,7 +7,7 @@
  *
  * @package actindo
  * @author  Patrick Prasse <pprasse@actindo.de>
- * @version $Revision: 404 $
+ * @version $Revision: 442 $
  * @copyright Copyright (c) 2008, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, pprasse@actindo.de)
  * @author  Holger Ronecker
  * @link    http://artdevil.de/ShopConnector ShopConnector Seite auf ArtDevil.de
@@ -89,9 +89,9 @@ function actindo_get_table_fields($table)
 	global $export;
 
 	$cols = array();
-	$result = $export->sDB->Execute("DESCRIBE $table");
-	while ($row = $result->FetchRow()) {
-		$cols[] = $row[0];
+	$result = $export->sDB->GetAll("DESCRIBE $table");
+	while($row = array_shift($result)) {
+		$cols[] = array_shift($row);
 	}
 	return $cols;
 }
@@ -136,7 +136,7 @@ function actindo_get_languages()
 	if(!is_array($__actindo_lang_cache)||!count($__actindo_lang_cache)) {
 		$langs = array();
 
-		$sql = "SELECT id AS language_id, isocode AS language_name, isocode AS language_code, locale, isocode as _shopware_code FROM `s_core_multilanguage` ORDER BY `id` ASC";
+		$sql = "SELECT id AS language_id, isocode AS language_name, isocode AS language_code, locale, isocode as _shopware_code FROM `s_core_multilanguage` ORDER BY `default` DESC, `id` ASC";
 		$res = act_db_query($sql);
 		while ($row = act_db_fetch_assoc($res)) {
 			if(is_numeric($row['isocode'])||empty($row['isocode'])) {
@@ -162,6 +162,53 @@ function actindo_get_languages()
 	}
 
 	return $__actindo_lang_cache;
+}
+
+function actindo_get_multistores() {
+	global $__actindo_multistore_cache;
+
+	if(!is_array($__actindo_multistore_cache) || empty($__actindo_multistore_cache)) {
+		$result = act_db_query('
+			SELECT `id`, `name`, `isocode`, `default`, `domainaliase`
+			FROM `s_core_multilanguage`
+			ORDER BY `default` DESC, `id` ASC
+		');
+		$shops = array();
+		while($row = act_db_fetch_assoc($result)) {
+			// id
+			$id = (int) $row['id'];
+
+			// name
+			if(!empty($row['name'])) {
+				$name = $row['name'];
+			} else {
+				if(!empty($row['default'])) {
+					$name = 'Main Store';
+				} else {
+					$name = sprintf('%s (%d)', $row['isocode'], $row['id']);
+				}
+			}
+
+			// url
+			if(!empty($row['domainaliase'])) {
+				list($url) = explode("\n", $row['domainaliase']);
+				$urlHttp = 'http://' . trim($url);
+			} else {
+				$urlHttp = '';
+			}
+
+			$shops[$id] = array(
+				'id' => $id,
+				'name' => $name,
+				'url_http' => $urlHttp,
+				'active' => 1,
+			);
+		}
+		act_db_free($result);
+		$__actindo_multistore_cache = $shops;
+	}
+
+	return $__actindo_multistore_cache;
 }
 
 function get_language_id_by_code($code)
@@ -581,6 +628,18 @@ function _checksum_file($fn, $checksum_type='MD5')
 		$data = strlen(trim($data));
 	}
 	return $data;
+}
+
+function aGetCategoryParents($categoryID, $limit = null) {
+	global $import;
+	$parents = array();
+	while($categoryID > 1 && ($limit === null || count($parents) < $limit)) {
+		$categoryID = (int) $import->sDB->GetOne(sprintf('SELECT `parent` FROM `s_categories` WHERE `id` = %d', $categoryID));
+		if(!empty($categoryID)) {
+			$parents[] = $categoryID;
+		}
+	}
+	return array_reverse($parents);
 }
 
 ?>

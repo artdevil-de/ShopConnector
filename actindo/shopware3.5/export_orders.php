@@ -7,7 +7,7 @@
  *
  * @package actindo
  * @author  Patrick Prasse <pprasse@actindo.de>
- * @version $Revision: 392 $
+ * @version $Revision: 412 $
  * @copyright Copyright (c) 2007, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, pprasse@actindo.de)
  * @license http://opensource.org/licenses/gpl-license.php GNU Public License
  * @author  Holger Ronecker
@@ -174,6 +174,7 @@ function export_orders_list($filters=array(), $from=0, $count=0x7FFFFFFF)
 			$res1->Close();
 			$actindoorder['customer']['blz'] = str_replace(" ", "", str_replace("-", "", str_replace("/", "", $row['bankcode'])));
 			$actindoorder['customer']['kto'] = $row['account'];
+			if(!empty($row['bankholder'])) $actindoorder['customer']['kto_inhaber'] = $row['bankholder'];
 		} else if($actindoorder['customer']['verf']=='PP') {
 			$actindoorder['payment']['pp'] = array();
 			$res1 = $export->sDB->Execute("SELECT * FROM `paypal_orders` WHERE `stransId`='".esc($order['transactionID'])."'");

@@ -7,7 +7,7 @@
  *
  * @package actindo
  * @author Patrick Prasse <pprasse@actindo.de>
- * @version $Revision: 394 $
+ * @version $Revision: 438 $
  * @copyright Copyright (c) 2007-2008, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, pprasse@actindo.de)
  * @license http://opensource.org/licenses/gpl-license.php GNU Public License
  * @author  Holger Ronecker
@@ -200,7 +200,7 @@ function export_products($categories_id=0, $products_id=0, $lang='', $just_list=
 		$id = $p['products_id'];
 
 		// art_nr, art_name, products_id, , products_status, created, last_modified already here.
-
+		$p['art_name'] = html_entity_decode($p['art_name']);
 		$p["weight_unit"] = "kg";
 		$p["l_bestand"] = (float)$p["products_quantity"];
 		$p['shipping_status'] += 1;	 // this is important, AS id=1 means _0_ days, id=2 means 1 day, etc.
@@ -208,12 +208,11 @@ function export_products($categories_id=0, $products_id=0, $lang='', $just_list=
 		foreach ($attribute_translation as $_shopware => $_actindo)
 			$p[$_actindo] = $attributes[$id][$_shopware];
 
-
-		// primary category
-		$p['categories_id'] = (int)$p['categories_id'];
-
 		// other categories
 		$p['all_categories'] = $articlecategories[$id];
+
+		// primary category
+		$p['categories_id'] = (int)max($p['all_categories']);
 
 		// base price, taxes +
 		// price brackets
@@ -264,6 +263,8 @@ function _do_export_properties(&$p, $property_field_ids)
 {
 	global $export;
 
+	$attribute_translation = actindo_attribute_translation_table();
+
 	$id = $p['products_id'];
 	$detailsid = (int)$p['articledetailsID'];
 	$default_language_id = default_lang();
@@ -277,9 +278,14 @@ function _do_export_properties(&$p, $property_field_ids)
 		$xl = actindo_get_translation('article', $id);
 		unset($row['articleID'], $row['articledetailsID'], $row['id']);
 
-		foreach ($row as $_key => $_val) {
-			if(!in_array($_key, $property_field_ids))
+		foreach( $row as $_key => $_val ) {
+			if(!in_array($_key, $property_field_ids)) { // not a "regular" property, check if it's a special one (like ean)
+				if(isset($attribute_translation[$_key])) {
+					$p[$attribute_translation[$_key]] = $_val;
+				}
+
 				continue;
+			}
 
 			$r = array(
 				'field_id' => $_key,
@@ -444,7 +450,7 @@ function _do_export_descriptions(&$p)
 			if(is_array($r)) {
 				$p['description'][$langid] = array(
 					'language_id' => $langid,
-					'products_name' => $r['txtArtikel'],
+					'products_name' => html_entity_decode($r['txtArtikel']),
 					'products_description' => $r['txtlangbeschreibung'],
 					'products_short_description' => $r['txtshortdescription'],
 					'products_keywords' => $r['txtkeywords'],
@@ -606,6 +612,11 @@ function _do_export_attributes(&$p, $articleprices, $pgruppe_translation, &$imag
 							continue;
 
 						$pg_id = $pgruppe_translation[$_price['groupkey']];
+						// $_price['price'] is always netto here! add taxes if $p['preisgruppen'][$pg_id]['is_brutto'] sais so
+						// the export_price function below does nothing but rounding, net and tax params are deprecated
+						if($p['preisgruppen'][$pg_id]['is_brutto']) {
+							$_price['price'] *= 1 + $found_pg['tax'] / 100;
+						}
 						$pg = array(
 							'is_brutto' => $p['preisgruppen'][$pg_id]['is_brutto'],
 							'grundpreis' => export_price((float)$_price['price'], $found_pg['net'], $found_pg['tax']),

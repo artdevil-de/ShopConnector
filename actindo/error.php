@@ -7,7 +7,7 @@
  *
  * @package actindo
  * @author  Patrick Prasse <pprasse@actindo.de>
- * @version $Revision: 114 $
+ * @version $Revision: 409 $
  * @copyright Copyright (c) 2007, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, pprasse@actindo.de)
  * @license http://opensource.org/licenses/gpl-license.php GNU Public License
  * @author  Holger Ronecker
@@ -93,7 +93,7 @@ $GLOBALS['errors_de'] = array(
  * @param int Error number
  * @returns string String representation of error, NULL if unknown error
  */
-function strerror($errno)
+function actstrerror( $errno )
 {
 	return $GLOBALS['errors_de'][(int)$errno];
 }

@@ -7,7 +7,7 @@
  *
  * @package actindo
  * @author Patrick Prasse <prasse@actindo.de>
- * @version $Revision: 397 $
+ * @version $Revision: 434 $
  * @copyright Copyright (c) 2008, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, haimerl@actindo.de)
  * @license http://opensource.org/licenses/gpl-license.php GNU Public License
  * @author  Holger Ronecker
@@ -72,6 +72,8 @@ function import_product($product)
 	if(!empty($product['shop']['art']['products_date_available'])) {
 		list($year, $month, $day) = split('[/.-]', substr($product['shop']['art']['products_date_available'], 0, 10));
 		$data['releasedate'] = $year."-".$day."-".$month;
+	} else {
+		$data['releasedate'] = ''; // becomes 0000-00-00
 	}
 	$data['shippingtime'] = max(0, $product['shop']['art']['shipping_status']-1);   // no map, just ID's
 
@@ -487,6 +489,9 @@ function _do_import_content($data, $product, $languages, $default_language_code,
 				$result = rename($file['file'], $uploadpath);
 				if(!$result) {
 					return array('ok' => FALSE, 'errno' => EIO, 'error' => "Downloads: Konnte Datei '{$file['file']}' nicht in '{$uploadpath}' umbenennen.");
+				} else {
+					// could trigger a warning if fails, not a fatal error
+					@chmod($uploadpath, 0644);
 				}
 
 				$sql = "INSERT INTO `s_articles_downloads` SET `articleID`=".(int)$id.",
@@ -580,6 +585,15 @@ function _do_set_article_attributes($combination_advanced, &$options, &$values, 
 
 	$errors = array();
 
+	// Zusatzfelder for shopware, make sure we only write into existing columns
+	// $attrColumns is used in the following foreach
+	$attrColumns = actindo_get_table_fields('s_articles_groups_value');
+	foreach($attrColumns AS $key => $column) {
+		if(0 !== strpos($column, 'gv_')) {
+			unset($attrColumns[$key]);
+		}
+	}
+
 	$default_standard = 0;
 	foreach ($combination_advanced as $want_art_nr => $comb) {
 
@@ -599,6 +613,17 @@ function _do_set_article_attributes($combination_advanced, &$options, &$values, 
 			$relations[] = array($options[$_name_id][$default_language_code], $values[$_name_id][$_value_id][$default_language_code]);  // for images
 		}
 
+		// Zusatzfelder
+		if(isset($comb['shop']) && isset($comb['shop']['properties']) && is_array($comb['shop']['properties'])) {
+			foreach($comb['shop']['properties'] AS $prop) {
+				$column = 'gv_' . $prop['field_id'];
+				if(!in_array($column, $attrColumns))
+					continue;
+
+				$val = empty($prop['field_value']) ? 'NULL' : act_quote($prop['field_value']);
+				$vals[] = sprintf('`%s` = %s', $column, $val);
+			}
+		}
 
 		$active = isset($comb['data']['products_status']) ? (int)$comb['data']['products_status'] : 1;
 		$standard = 0;
