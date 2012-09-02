@@ -7,7 +7,7 @@
  *
  * @package actindo
  * @author Patrick Prasse <prasse@actindo.de>
- * @version $Revision: 434 $
+ * @version $Revision: 471 $
  * @copyright Copyright (c) 2008, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, haimerl@actindo.de)
  * @license http://opensource.org/licenses/gpl-license.php GNU Public License
  * @author  Holger Ronecker
@@ -50,11 +50,13 @@ function import_product($product)
 
 	$data = array();
 
+	if(false) { // actindo does currently not send these fields, don't set them to not overwrite shopsettings, see comment below (#46023)
 	$data['pricegroupID'] = isset($product['pricegroupID']) ? $product['pricegroupID'] : '0';
 	// Holger, Die Shopware API reagiert auf gesetzte Filter mit setzen des Feldes "PriceGroupActive", was nicht wünscheswert ist
 	// Vermutlich ist es ein Bug in der Shopware-API, Shopware überprüft es mit Ticket ID #11749 vom 12.05.2011
 	// - Mit aktualisierter Import API vom 27.07.2011 ist der Fehler von Shopware behoben (version 3.5.4.1)
 	$data['pricegroupActive'] = isset($product['pricegroupActive']) ? $product['pricegroupActive'] : '0';
+	}
 
 	// art_nr, art_name, products_id, , products_status, created, last_modified already here.
 	$data['ordernumber'] = $product['art_nr'];
@@ -550,11 +552,17 @@ function _do_set_article_attributes_settings($art_id, $product)
 	global $import;
 	$res = $pres = TRUE;
 
-	$sql = "DELETE FROM `s_articles_groups_settings` WHERE `articleID`=".(int)$art_id;
-	$result0 = act_db_query($sql);
-
-	$sql = "REPLACE INTO `s_articles_groups_settings` (`articleID`, `defaultorder`, `grouporder`, `optionorder`, `type`, `instock`, `template`, `upprice`) VALUES
-		('".(int)$art_id."', 'standard DESC', 'groupposition', 'optionposition', '0', '".(int)$product['shop']['art']['abverkauf']."', '', '0')";
+	$instock = (int) $product['shop']['art']['abverkauf'];
+	$sql = sprintf('INSERT INTO `s_articles_groups_settings` SET `articleID` = %d,
+			`defaultorder` = "standard DESC",
+			`grouporder` = "groupposition",
+			`optionorder` = "optionposition",
+			`type` = 0,
+			`instock` = %d,
+			`template` = "",
+			`upprice` = 0
+			ON DUPLICATE KEY UPDATE `instock` = %d',
+			intval($art_id), $instock, $instock);
 
 	$res &= act_db_query($sql);
 	if(!$res) {

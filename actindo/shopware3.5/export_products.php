@@ -7,7 +7,7 @@
  *
  * @package actindo
  * @author Patrick Prasse <pprasse@actindo.de>
- * @version $Revision: 438 $
+ * @version $Revision: 467 $
  * @copyright Copyright (c) 2007-2008, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, pprasse@actindo.de)
  * @license http://opensource.org/licenses/gpl-license.php GNU Public License
  * @author  Holger Ronecker
@@ -316,7 +316,7 @@ function _do_export_properties(&$p, $property_field_ids)
 	}
 
 	if(is_shopware3()) {
-		$sql = "SELECT * FROM `s_filter_values` WHERE articleID=".(int)$id;
+		$sql = "SELECT *, GROUP_CONCAT(`value` SEPARATOR '|') AS `value` FROM `s_filter_values` WHERE articleID=".(int)$id." GROUP BY `groupID`, `optionID`, `articleID`";
 		$result = act_db_query($sql);
 		if(is_object($result)) {
 			$xl = actindo_get_translation('properties', $id);

@@ -8,14 +8,14 @@ error_reporting(E_ALL);
  *
  * @package actindo
  * @author  Patrick Prasse <pprasse@actindo.de>
- * @version $Revision: 442 $
+ * @version $Revision: 471 $
  * @copyright Copyright (c) 2007, Patrick Prasse (Schneebeerenweg 26, D-85551 Kirchheim, GERMANY, pprasse@actindo.de)
  * @license http://opensource.org/licenses/gpl-license.php GNU Public License
  * @author  Holger Ronecker
  * @link    http://artdevil.de/ShopConnector ShopConnector Seite auf ArtDevil.de
  * @copyright Copyright (c) 2011, Holger Ronecker, devil@artdevil.de
  */
-define( 'ACTINDO_SHOPCONN_REVISION', '$Revision: 442-devil0.4 $' );
+define( 'ACTINDO_SHOPCONN_REVISION', '$Revision: 471-devil0.4 $' );
 define( 'ACTINDO_PROTOCOL_REVISION', '2.'.substr( ACTINDO_SHOPCONN_REVISION, 11, -2 ) );
 
 if(ACTINDO_CONNECTOR_TYPE=='shopware3.5'||ACTINDO_CONNECTOR_TYPE=='shopware3.04'||ACTINDO_CONNECTOR_TYPE=='shopware3.03')	 // do not use is_shopware3 here...
